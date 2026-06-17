@@ -1,0 +1,195 @@
+{% extends "portfolio/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'portfolio/css/consulting.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="consult-shell">
+  <section class="consult-hero mb-4">
+    <div>
+      <p class="consult-eyebrow">Operations / Stock Detail</p>
+      <h1 class="h3 mb-2">{{ stock.code }} {{ stock.name }}</h1>
+      <p class="consult-subdued mb-0">
+        시장 {{ stock.market }}{% if stock.sector %} / 섹터 {{ stock.sector }}{% endif %}
+      </p>
+    </div>
+    <div class="consult-hero-actions">
+      <a class="btn btn-outline-secondary btn-sm" href="{{ status_page_url }}">목록으로</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ data_quality_api_url }}">Data Quality API</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ logs_api_url }}">Logs API</a>
+      {% if consult_page_url %}
+        <a class="btn btn-outline-secondary btn-sm" href="{{ consult_page_url }}">Consult 화면</a>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="consult-grid mb-4">
+    <article class="span-6 consult-panel-card">
+      <h2 class="consult-section-title">최신 Data Quality Snapshot</h2>
+      {% if snapshot %}
+        <div class="consult-kpi">
+          <span>as_of_date</span>
+          <strong>{{ snapshot.as_of_date }}</strong>
+        </div>
+        <div class="consult-kpi">
+          <span>quality_grade</span>
+          <strong>{{ snapshot.quality_grade }}</strong>
+        </div>
+        <div class="consult-kpi">
+          <span>overall_score</span>
+          <strong>{{ snapshot.overall_score }}</strong>
+        </div>
+        <div class="consult-kpi">
+          <span>price / flow days</span>
+          <strong>{{ snapshot.price_data_days }} / {{ snapshot.investor_flow_days }}</strong>
+        </div>
+        <div class="consult-kpi">
+          <span>financial_data_available</span>
+          <strong>{{ snapshot.financial_data_available|yesno:"yes,no" }}</strong>
+        </div>
+        <div class="mt-3">
+          <div class="consult-metric-label">missing_fields</div>
+          {% if snapshot.missing_fields %}
+            <ul class="consult-warning-list">
+              {% for item in snapshot.missing_fields %}
+                <li><code>{{ item }}</code></li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="consult-subdued mb-0">없음</p>
+          {% endif %}
+        </div>
+        <div class="mt-3">
+          <div class="consult-metric-label">anomaly_flags</div>
+          {% if snapshot.anomaly_flags %}
+            <ul class="consult-warning-list">
+              {% for item in snapshot.anomaly_flags %}
+                <li><code>{{ item }}</code></li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="consult-subdued mb-0">없음</p>
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="consult-subdued mb-0">저장된 data quality snapshot이 없습니다.</p>
+      {% endif %}
+    </article>
+
+    <article class="span-6 consult-panel-card">
+      <h2 class="consult-section-title">수집 상태</h2>
+      {% for row in collection_status_rows %}
+        <div class="consult-kpi">
+          <div>
+            <strong>{{ row.label }}</strong>
+            <div class="consult-subdued">
+              source {{ row.snapshot.source|default:"-" }} / rows {{ row.snapshot.last_row_count }}
+            </div>
+          </div>
+          <strong>{{ row.snapshot.status }}</strong>
+        </div>
+        {% if row.snapshot.last_message %}
+          <div class="consult-subdued mb-3">{{ row.snapshot.last_message }}</div>
+        {% endif %}
+        {% if row.provider_detail_url or row.provider_logs_api_url %}
+          <div class="d-flex gap-2 flex-wrap mb-3">
+            {% if row.provider_detail_url %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ row.provider_detail_url }}">provider detail</a>
+            {% endif %}
+            {% if row.provider_logs_api_url %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ row.provider_logs_api_url }}">filtered logs api</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </article>
+  </section>
+
+  <section class="consult-grid">
+    <article class="span-6 consult-panel-card">
+      <h2 class="consult-section-title">최신 재무 스냅샷</h2>
+      {% if latest_financial_snapshot %}
+        <div class="consult-kpi">
+          <span>period</span>
+          <strong>{{ latest_financial_snapshot.fiscal_year }} {{ latest_financial_snapshot.period_type }}</strong>
+        </div>
+        <div class="consult-kpi">
+          <span>reported_date</span>
+          <strong>{{ latest_financial_snapshot.reported_date|default:"-" }}</strong>
+        </div>
+        <div class="consult-kpi">
+          <span>revenue</span>
+          <strong>{{ latest_financial_snapshot.revenue|default:"-" }}</strong>
+        </div>
+        <div class="consult-kpi">
+          <span>operating_profit</span>
+          <strong>{{ latest_financial_snapshot.operating_profit|default:"-" }}</strong>
+        </div>
+        <div class="consult-kpi">
+          <span>equity / debt_ratio</span>
+          <strong>{{ latest_financial_snapshot.equity|default:"-" }} / {{ latest_financial_snapshot.debt_ratio|default:"-" }}</strong>
+        </div>
+      {% else %}
+        <p class="consult-subdued mb-0">재무 스냅샷이 없습니다.</p>
+      {% endif %}
+    </article>
+
+    <article class="span-6 consult-panel-card">
+      <h2 class="consult-section-title">최근 수집 로그</h2>
+      <form class="row g-2 mb-3" method="get">
+        <div class="col-sm-5">
+          <label class="form-label consult-metric-label" for="provider-filter">provider</label>
+          <select class="form-select form-select-sm" id="provider-filter" name="provider">
+            <option value="">전체</option>
+            {% for provider in provider_choices %}
+              <option value="{{ provider }}" {% if provider_filter == provider %}selected{% endif %}>{{ provider }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-4">
+          <label class="form-label consult-metric-label" for="status-filter">status</label>
+          <select class="form-select form-select-sm" id="status-filter" name="status">
+            {% for value, label in status_filter_choices %}
+              <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-3 d-flex align-items-end">
+          <div class="form-check mb-2">
+            <input class="form-check-input" id="failed-only-filter" name="failed_only" type="checkbox" value="1" {% if failed_only %}checked{% endif %}>
+            <label class="form-check-label" for="failed-only-filter">실패만 보기</label>
+          </div>
+        </div>
+        <div class="col-12 d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-primary" type="submit">필터 적용</button>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ clear_filters_url }}">필터 초기화</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ toggle_failed_only_url }}">
+            {% if failed_only %}실패 필터 해제{% else %}실패만 보기 토글{% endif %}
+          </a>
+        </div>
+      </form>
+      <div class="consult-subdued mb-3">
+        provider {% if provider_filter %}{{ provider_filter }}{% else %}all{% endif %} /
+        status {% if status_filter %}{{ status_filter }}{% else %}all{% endif %} /
+        failed_only {% if failed_only %}yes{% else %}no{% endif %}
+      </div>
+      {% if recent_logs %}
+        <ul class="consult-warning-list">
+          {% for row in recent_logs %}
+            <li>
+              <strong>{{ row.job_name }}</strong> / {{ row.provider }} / {{ row.status }}
+              <div class="consult-subdued">
+                {{ row.started_at|date:"Y-m-d H:i" }}{% if row.error_message %} - {{ row.error_message }}{% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="consult-subdued mb-0">종목 기준 수집 로그가 없습니다.</p>
+      {% endif %}
+    </article>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends 'portfolio/base.html' %}
+{% block content %}
+<div class="card shadow-sm"><div class="card-body">
+  <h4 class="mb-3">티커 매핑 삭제</h4>
+  <p><strong>{{ symbol.stock_name }}</strong> → <code>{{ symbol.ticker }}</code> 매핑을 삭제하시겠습니까?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn btn-danger">삭제</button>
+    <a class="btn btn-outline-secondary" href="/symbols/">취소</a>
+  </form>
+</div></div>
+{% endblock %}

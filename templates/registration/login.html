@@ -1,0 +1,53 @@
+{% extends "portfolio/base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <p class="text-uppercase text-secondary small mb-2">theStock Account Login</p>
+        <h1 class="h4 mb-3">로그인</h1>
+        <p class="text-secondary small mb-4">theStock 자체 계정으로 로그인하면 컨설팅 화면과 사용자별 보유 종목 API를 사용할 수 있습니다.</p>
+        <form method="post">
+          {% csrf_token %}
+          {% if auth_error_message %}
+          <div class="alert alert-danger">{{ auth_error_message }}</div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label" for="id_username">사용자 이름</label>
+            <input
+              type="text"
+              name="username"
+              id="id_username"
+              class="form-control"
+              value="{{ form.username.value|default_if_none:'' }}"
+              autocomplete="username"
+              required
+            >
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_password">비밀번호</label>
+            <input
+              type="password"
+              name="password"
+              id="id_password"
+              class="form-control"
+              autocomplete="current-password"
+              required
+            >
+          </div>
+          {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+          {% endif %}
+          <button type="submit" class="btn btn-dark w-100">로그인</button>
+        </form>
+        <p class="text-secondary small mt-3 mb-0">
+          계정이 없다면
+          <a href="{{ signup_url }}">theStock 회원가입</a>
+          후 로그인하세요.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

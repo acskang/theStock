@@ -1,0 +1,87 @@
+{% extends "portfolio/base.html" %}
+
+{% block title %}theStock | 투자 워크벤치{% endblock %}
+{% block page_title %}서비스 소개{% endblock %}
+
+{% block content %}
+<section class="landing-page">
+  <header class="landing-hero">
+    <div>
+      <p class="section-eyebrow">Investment Workbench</p>
+      <h2>theStock.</h2>
+      <p>
+        저장된 보유 종목, 일봉 가격, 운영 로그를 기준으로 포트폴리오 상태와 계산 전용 시뮬레이션을 확인하는 업무용 콘솔입니다.
+        로그인과 회원가입은 theStock 자체 계정으로 처리합니다.
+        주문 실행, 자동매매, 매수/매도 추천은 제공하지 않습니다.
+      </p>
+      <div class="landing-actions">
+        {% if request.user.is_authenticated %}
+          <a class="landing-primary" href="{% url 'portfolio_summary_page' %}">포트폴리오 요약</a>
+          <a class="landing-secondary" href="{% url 'manual_page' %}">Manual</a>
+        {% else %}
+          <a class="landing-primary" href="{% url 'login' %}">로그인</a>
+          <a class="landing-secondary" href="{% url 'manual_page' %}">Manual</a>
+        {% endif %}
+      </div>
+    </div>
+    <aside class="landing-status" aria-label="Safety status">
+      <div>
+        <span>Mode</span>
+        <strong>Read-only first</strong>
+      </div>
+      <div>
+        <span>Order execution</span>
+        <strong>Disabled</strong>
+      </div>
+      <div>
+        <span>Advice wording</span>
+        <strong>Guarded</strong>
+      </div>
+    </aside>
+  </header>
+
+  <section class="landing-grid" aria-label="Core features">
+    <article>
+      <span>Portfolio</span>
+      <h3>보유 현황 요약</h3>
+      <p>사용자별 `UserHolding`과 저장된 `DailyPrice`로 평가금액, 손익, 가격 누락 상태를 확인합니다.</p>
+    </article>
+    <article>
+      <span>Simulation</span>
+      <h3>평균단가 계산</h3>
+      <p>추가 예산과 기준 가격을 넣어 평균단가 변화를 계산합니다. 결과는 저장되지 않고 주문도 실행하지 않습니다.</p>
+    </article>
+    <article>
+      <span>Operations</span>
+      <h3>운영자 조회</h3>
+      <p>staff-only 화면에서 Toss order history와 UserHolding 정합성 참고 비교를 read-only로 확인합니다.</p>
+    </article>
+    <article>
+      <span>Manual</span>
+      <h3>문서 기반 재개</h3>
+      <p>현재 구현 상태, 안전 정책, smoke 결과, 후속 설계를 Manual 화면에서 바로 검색합니다.</p>
+    </article>
+  </section>
+
+  <section class="landing-flow" aria-label="Recommended workflow">
+    <h2>권장 사용 흐름</h2>
+    <div>
+      <article>
+        <strong>01</strong>
+        <h3>보유 데이터 확인</h3>
+        <p>포트폴리오 요약에서 가격 기준일과 누락 상태를 먼저 확인합니다.</p>
+      </article>
+      <article>
+        <strong>02</strong>
+        <h3>계산 전용 시뮬레이션</h3>
+        <p>추가 예산을 입력해 평균단가 변화를 계산합니다.</p>
+      </article>
+      <article>
+        <strong>03</strong>
+        <h3>운영 문서 확인</h3>
+        <p>Manual에서 보류 항목과 재개 기준을 확인한 뒤 다음 작업을 정합니다.</p>
+      </article>
+    </div>
+  </section>
+</section>
+{% endblock %}

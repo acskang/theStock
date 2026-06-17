@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ schema_title }}</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f6f4ef;
+            --panel: #fffdf8;
+            --text: #1f2933;
+            --muted: #5f6c7b;
+            --line: #d8d0c2;
+            --accent: #0f766e;
+            --accent-soft: #d7f3ef;
+            --method-get: #0f766e;
+            --method-post: #1d4ed8;
+            --method-put: #7c3aed;
+            --method-patch: #b45309;
+            --method-delete: #b91c1c;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+            background: linear-gradient(180deg, #f3efe7 0%, var(--bg) 100%);
+            color: var(--text);
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px 64px;
+        }
+
+        .hero {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 20px 40px rgba(31, 41, 51, 0.06);
+        }
+
+        h1, h2, h3, p {
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .hero p {
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .hero-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .hero-links a {
+            text-decoration: none;
+            color: var(--accent);
+            background: var(--accent-soft);
+            padding: 10px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+        }
+
+        .section {
+            margin-top: 28px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 24px;
+        }
+
+        .section h2 {
+            font-size: 1.25rem;
+            margin-bottom: 16px;
+        }
+
+        .group {
+            margin-top: 20px;
+        }
+
+        .group:first-of-type {
+            margin-top: 0;
+        }
+
+        .group h3 {
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .endpoint {
+            border-top: 1px solid var(--line);
+            padding: 16px 0;
+        }
+
+        .endpoint:first-of-type {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+        .endpoint-path {
+            font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+            font-size: 0.95rem;
+            word-break: break-all;
+            margin-bottom: 12px;
+        }
+
+        .operations {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 10px;
+        }
+
+        .operation {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 12px 14px;
+            background: #fff;
+        }
+
+        .method {
+            display: inline-block;
+            min-width: 64px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            color: #fff;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .method.GET, .method.HEAD, .method.OPTIONS { background: var(--method-get); }
+        .method.POST { background: var(--method-post); }
+        .method.PUT { background: var(--method-put); }
+        .method.PATCH { background: var(--method-patch); }
+        .method.DELETE { background: var(--method-delete); }
+
+        .operation strong {
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 6px;
+        }
+
+        .operation p {
+            color: var(--muted);
+            font-size: 0.94rem;
+            line-height: 1.5;
+        }
+
+        .tags {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag {
+            background: #ece7dc;
+            color: #5d5241;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+        }
+
+        ul {
+            padding-left: 18px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <section class="hero">
+        <h1>{{ schema_title }}</h1>
+        <p>{{ schema_description }}</p>
+        <div class="hero-links">
+            <a href="{{ schema_path }}">Raw OpenAPI Schema</a>
+            <a href="/docs/api_reference.md">Manual API Reference</a>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2>사용 안내</h2>
+        <ul>
+            <li>이 페이지는 실제 DRF schema를 기반으로 path와 method를 자동 요약합니다.</li>
+            <li>요청/응답 필드 설명과 운영 규칙은 수동 문서인 <code>docs/api_reference.md</code>를 함께 확인합니다.</li>
+            <li><code>/api/schema/</code> 응답은 OpenAPI 도구나 Swagger Editor에 바로 가져가서 사용할 수 있습니다.</li>
+        </ul>
+    </section>
+
+    <section class="section">
+        <h2>자동 생성 Endpoint 요약</h2>
+        {% for group in schema_groups %}
+            <div class="group">
+                <h3>{{ group.name }}</h3>
+                {% for entry in group.entries %}
+                    <div class="endpoint">
+                        <div class="endpoint-path">{{ entry.path }}</div>
+                        <div class="operations">
+                            {% for operation in entry.operations %}
+                                <article class="operation">
+                                    <span class="method {{ operation.method }}">{{ operation.method }}</span>
+                                    <strong>{{ operation.summary|default:"summary not provided" }}</strong>
+                                    <p>{{ operation.description|default:"No description provided." }}</p>
+                                    {% if operation.tags %}
+                                        <div class="tags">
+                                            {% for tag in operation.tags %}
+                                                <span class="tag">{{ tag }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </article>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% empty %}
+            <p>현재 schema에서 노출된 endpoint가 없습니다.</p>
+        {% endfor %}
+    </section>
+</main>
+</body>
+</html>

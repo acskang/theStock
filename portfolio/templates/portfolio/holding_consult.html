@@ -1,0 +1,71 @@
+{% extends "portfolio/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'portfolio/css/consulting.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="consult-shell">
+  <div class="consult-hero mb-4">
+    <div>
+      <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'consulting_holding_list' %}">보유 종목 목록으로</a>
+      <p class="consult-eyebrow">Holding Consulting</p>
+      <h1 class="mb-1">{{ holding.stock.name }}</h1>
+      <div class="text-secondary">{{ holding.stock.code }} · {{ holding.stock.market }}{% if holding.stock.sector %} · {{ holding.stock.sector }}{% endif %}</div>
+    </div>
+    <div class="consult-hero-actions">
+      <a class="btn btn-outline-dark" href="{{ page_config.consultHistoryUrl }}">컨설팅 이력 API</a>
+      <button id="consult-refresh-button" class="btn btn-dark" {% if not holding_summary.is_consultable %}disabled{% endif %}>다시 분석</button>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4 consult-header-grid">
+    <div class="col-6 col-lg-3">
+      <div class="consult-stat-card">
+        <div class="consult-metric-label">평균단가</div>
+        <div class="consult-stat-value" data-header-field="average_price">{{ holding_summary.average_price_display }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="consult-stat-card">
+        <div class="consult-metric-label">현재가</div>
+        <div class="consult-stat-value" data-header-field="current_price">{{ holding_summary.current_price_display }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="consult-stat-card">
+        <div class="consult-metric-label">손익률</div>
+        <div class="consult-stat-value {% if holding_summary.loss_rate and holding_summary.loss_rate < 0 %}text-danger{% elif holding_summary.loss_rate and holding_summary.loss_rate > 0 %}text-success{% endif %}" data-header-field="loss_rate">{{ holding_summary.loss_rate_display }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="consult-stat-card">
+        <div class="consult-metric-label">추가 예산</div>
+        <div class="consult-stat-value" data-header-field="max_additional_budget">{{ holding_summary.max_additional_budget_display }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="consult-status-banner"></div>
+  <div id="consult-screen-root" class="consult-screen-root">
+    <div class="card consult-card">
+      <div class="card-body">
+        <div class="consult-loading">
+          <div class="spinner-border text-dark" role="status" aria-hidden="true"></div>
+          <div>
+            <h2 class="h5 mb-1">컨설팅 결과를 계산 중입니다.</h2>
+            <p class="text-secondary mb-0">Data Quality, Risk Gate, Probability, Capital Plan을 불러오고 있습니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{ page_config|json_script:"consult-page-config" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'portfolio/js/holding_consult.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'portfolio/base.html' %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
+      <div>
+        <h4 class="mb-1">거래 등록</h4>
+        <div class="text-muted small">매수 또는 매도를 한 건씩 직접 입력합니다.</div>
+      </div>
+      <a class="btn btn-outline-secondary" href="{% url 'transaction_list' %}">목록으로</a>
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <div class="row g-3">
+        {% for field in form %}
+        <div class="col-md-4">
+          {{ field.label_tag }}
+          {{ field }}
+          {% if field.errors %}
+          <div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <button class="btn btn-primary mt-3">등록</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

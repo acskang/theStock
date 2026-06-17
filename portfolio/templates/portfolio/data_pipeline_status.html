@@ -1,0 +1,242 @@
+{% extends "portfolio/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'portfolio/css/consulting.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="consult-shell">
+  <section class="consult-hero mb-4">
+    <div>
+      <p class="consult-eyebrow">Operations</p>
+      <h1 class="h3 mb-2">Data Pipeline 운영 현황</h1>
+      <p class="consult-subdued mb-0">
+        최신 snapshot, provider 실패 상태, 최근 수집 로그를 한 화면에서 확인합니다.
+      </p>
+    </div>
+    <div class="consult-hero-actions">
+      <span class="status-pill {{ health_class }}">상태 {{ health_label }}</span>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ summary_api_url }}">Summary API</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ ingestion_logs_api_url }}">Logs API</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ provider_status_api_url }}">Provider API</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'api-docs' %}">API Docs</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'api-schema' %}">Schema</a>
+    </div>
+  </section>
+
+  <section class="consult-grid mb-4">
+    <article class="span-4 consult-panel-card">
+      <div class="consult-metric-label">최신 스냅샷 날짜</div>
+      <div class="consult-metric-value">
+        {% if snapshot_summary.latest_as_of_date %}{{ snapshot_summary.latest_as_of_date }}{% else %}없음{% endif %}
+      </div>
+      <div class="consult-subdued mt-2">
+        age {{ health_summary.latest_snapshot_age_days|default:"-" }}일 /
+        stale {{ snapshot_summary.snapshot_is_stale|yesno:"yes,no" }}
+      </div>
+    </article>
+    <article class="span-4 consult-panel-card">
+      <div class="consult-metric-label">최근 수집 상태</div>
+      <div class="consult-metric-value">
+        실패 {{ health_summary.recent_failure_count }}건 / provider {{ health_summary.failing_provider_count }}건
+      </div>
+      <div class="consult-subdued mt-2">
+        최신 성공
+        {% if health_summary.latest_success_started_at %}{{ health_summary.latest_success_started_at|date:"Y-m-d H:i" }}{% else %}없음{% endif %}
+      </div>
+    </article>
+    <article class="span-4 consult-panel-card">
+      <div class="consult-metric-label">스냅샷 대상 종목</div>
+      <div class="consult-metric-value">{{ snapshot_summary.stock_count }}개</div>
+      <div class="consult-label-cluster mt-2">
+        <span class="status-pill grade-A">A {{ snapshot_summary.grade_counts.A|default:0 }}</span>
+        <span class="status-pill grade-B">B {{ snapshot_summary.grade_counts.B|default:0 }}</span>
+        <span class="status-pill grade-C">C {{ snapshot_summary.grade_counts.C|default:0 }}</span>
+        <span class="status-pill grade-D">D {{ snapshot_summary.grade_counts.D|default:0 }}</span>
+      </div>
+    </article>
+  </section>
+
+  <section class="consult-grid">
+    <article class="span-6 consult-panel-card">
+      <h2 class="consult-section-title">Provider 상태</h2>
+      <div class="consult-kpi">
+        <span>총 provider</span>
+        <strong>{{ provider_summary.total }}</strong>
+      </div>
+      <div class="consult-kpi">
+        <span>활성</span>
+        <strong>{{ provider_summary.active }}</strong>
+      </div>
+      <div class="consult-kpi">
+        <span>실패 누적</span>
+        <strong>{{ provider_summary.failing }}</strong>
+      </div>
+      {% if provider_summary.failing_providers %}
+        <div class="mt-3">
+          <div class="consult-metric-label">실패 provider</div>
+          <ul class="consult-warning-list">
+            {% for row in provider_summary.failing_providers %}
+              <li>
+                <strong>{{ row.provider }}</strong> / {{ row.data_type }}
+                {% if row.consecutive_failures %}({{ row.consecutive_failures }}회 연속){% endif %}
+                <a class="btn btn-sm btn-outline-secondary ms-2" href="{% url 'data_pipeline_provider_detail_page' row.provider row.data_type %}">
+                  detail
+                </a>
+                {% if row.last_error_message %}
+                  <div class="consult-subdued">{{ row.last_error_message }}</div>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <p class="consult-subdued mb-0 mt-3">실패 상태 provider가 없습니다.</p>
+      {% endif %}
+    </article>
+
+    <article class="span-6 consult-panel-card">
+      <h2 class="consult-section-title">데이터 품질 신호</h2>
+      <div class="consult-kpi">
+        <span>재무 누락 종목</span>
+        <strong>{{ snapshot_summary.financial_missing_count }}</strong>
+      </div>
+      <div class="consult-kpi">
+        <span>이상 징후 종목</span>
+        <strong>{{ snapshot_summary.anomaly_stock_count }}</strong>
+      </div>
+      <div class="mt-3">
+        <div class="consult-metric-label">missing fields</div>
+        {% if snapshot_summary.missing_field_counts %}
+          <ul class="consult-warning-list">
+            {% for key, value in snapshot_summary.missing_field_counts.items %}
+              <li><code>{{ key }}</code> {{ value }}건</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="consult-subdued mb-0">누락 필드 없음</p>
+        {% endif %}
+      </div>
+      <div class="mt-3">
+        <div class="consult-metric-label">anomaly flags</div>
+        {% if snapshot_summary.anomaly_flag_counts %}
+          <ul class="consult-warning-list">
+            {% for key, value in snapshot_summary.anomaly_flag_counts.items %}
+              <li><code>{{ key }}</code> {{ value }}건</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="consult-subdued mb-0">이상 징후 없음</p>
+        {% endif %}
+      </div>
+    </article>
+
+    <article class="span-12 consult-panel-card">
+      <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+        <h2 class="consult-section-title mb-0">최신 스냅샷 종목</h2>
+        <span class="consult-subdued">종목별 상세는 data-quality API drill-down으로 확인합니다.</span>
+      </div>
+      <div class="consult-table-wrap">
+        <table class="table table-sm align-middle consult-table">
+          <thead>
+            <tr>
+              <th>종목</th>
+              <th>grade</th>
+              <th>price days</th>
+              <th>flow days</th>
+              <th>financial</th>
+              <th>flags</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in latest_snapshot_rows %}
+              <tr>
+                <td><strong>{{ row.stock.code }}</strong> / {{ row.stock.name }}</td>
+                <td>{{ row.quality_grade }}</td>
+                <td>{{ row.price_data_days }}</td>
+                <td>{{ row.investor_flow_days }}</td>
+                <td>{{ row.financial_data_available|yesno:"yes,no" }}</td>
+                <td>
+                  {% if row.anomaly_flags %}
+                    {{ row.anomaly_flags|join:", " }}
+                  {% else %}
+                    <span class="consult-subdued">-</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'data_pipeline_stock_detail_page' row.stock.code %}">
+                    page
+                  </a>
+                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'data-pipeline-data-quality-detail' row.stock.code %}">
+                    api
+                  </a>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" class="consult-subdued">최신 snapshot 종목이 없습니다.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="span-12 consult-panel-card">
+      <h2 class="consult-section-title">최근 파이프라인 실행</h2>
+      <div class="consult-table-wrap">
+        <table class="table table-sm align-middle consult-table">
+          <thead>
+            <tr>
+              <th>job</th>
+              <th>provider</th>
+              <th>status</th>
+              <th>target</th>
+              <th>started</th>
+              <th>success</th>
+              <th>failed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in ingestion_summary.latest_jobs %}
+              <tr>
+                <td>{{ row.job_name }}</td>
+                <td>{{ row.provider }}</td>
+                <td>{{ row.status }}</td>
+                <td>{{ row.target_type }}{% if row.target_code %} / {{ row.target_code }}{% endif %}</td>
+                <td>{{ row.started_at|date:"Y-m-d H:i" }}</td>
+                <td>{{ row.success_count }}</td>
+                <td>{{ row.failed_count }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" class="consult-subdued">최근 실행 로그가 없습니다.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="span-12 consult-panel-card consult-disclaimer">
+      <h2 class="consult-section-title">최근 실패 로그</h2>
+      {% if ingestion_summary.recent_failures %}
+        <ul class="consult-warning-list">
+          {% for row in ingestion_summary.recent_failures %}
+            <li>
+              <strong>{{ row.job_name }}</strong> / {{ row.provider }} / {{ row.status }}
+              <div class="consult-subdued">
+                {{ row.started_at|date:"Y-m-d H:i" }}{% if row.error_message %} - {{ row.error_message }}{% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="consult-subdued mb-0">최근 실패 로그가 없습니다.</p>
+      {% endif %}
+    </article>
+  </section>
+</div>
+{% endblock %}

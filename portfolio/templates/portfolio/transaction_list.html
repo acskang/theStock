@@ -1,0 +1,40 @@
+{% extends 'portfolio/base.html' %}
+{% block content %}
+<div class="card shadow-sm mb-4"><div class="card-body">
+<div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
+  <div>
+    <h4 class="mb-1">거래 조회</h4>
+    <div class="text-muted small">CSV 업로드 외에도 매수/매도를 한 건씩 직접 입력할 수 있습니다.</div>
+  </div>
+  <a class="btn btn-primary" href="{% url 'transaction_create' %}">거래 등록</a>
+</div>
+<form class="row g-3">
+  <div class="col-md-4"><input class="form-control" name="q" value="{{ q }}" placeholder="종목 검색"></div>
+  <div class="col-md-3"><select class="form-select" name="trade_type"><option value="">전체</option><option value="매수" {% if trade_type == '매수' %}selected{% endif %}>매수</option><option value="매도" {% if trade_type == '매도' %}selected{% endif %}>매도</option></select></div>
+  <div class="col-md-3"><input class="form-control" name="year" value="{{ year }}" placeholder="년"></div>
+  <div class="col-md-2"><button class="btn btn-primary w-100">검색</button></div>
+</form>
+</div></div>
+<div class="card shadow-sm"><div class="card-body">
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+<thead><tr><th>매매구분</th><th>종목</th><th>년</th><th>월</th><th>일</th><th>시</th><th>분</th><th>수량</th><th>단가</th><th></th></tr></thead>
+<tbody>
+{% for tx in page_obj %}
+<tr>
+  <td>{{ tx.trade_type }}</td><td>{{ tx.stock_name }}</td><td>{{ tx.year }}</td><td>{{ tx.month }}</td><td>{{ tx.day }}</td><td>{{ tx.hour }}</td><td>{{ tx.minute }}</td><td>{{ tx.quantity }}</td><td>{{ tx.unit_price }}</td>
+  <td class="text-nowrap"><a class="btn btn-sm btn-outline-secondary" href="/transactions/{{ tx.id }}/edit/">수정</a> <a class="btn btn-sm btn-outline-danger" href="/transactions/{{ tx.id }}/delete/">삭제</a></td>
+</tr>
+{% empty %}<tr><td colspan="10">데이터가 없습니다.</td></tr>{% endfor %}
+</tbody>
+</table>
+</div>
+<nav>
+  <ul class="pagination">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&trade_type={{ trade_type }}&year={{ year }}">이전</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&trade_type={{ trade_type }}&year={{ year }}">다음</a></li>{% endif %}
+  </ul>
+</nav>
+</div></div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "portfolio/base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-7 col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <p class="text-uppercase text-secondary small mb-2">theStock Account Signup</p>
+        <h1 class="h4 mb-3">회원가입</h1>
+        <p class="text-secondary small mb-4">가입 정보는 theStock 내부 계정으로 저장되며, 완료 후 바로 로그인됩니다.</p>
+        <form method="post">
+          {% csrf_token %}
+          {% if auth_error_message %}
+          <div class="alert alert-danger">{{ auth_error_message }}</div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label" for="id_username">사용자 이름</label>
+            <input
+              type="text"
+              name="username"
+              id="id_username"
+              class="form-control"
+              value="{{ form.username.value|default_if_none:'' }}"
+              autocomplete="username"
+              required
+            >
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_full_name">이름</label>
+            <input
+              type="text"
+              name="full_name"
+              id="id_full_name"
+              class="form-control"
+              value="{{ form.full_name.value|default_if_none:'' }}"
+              autocomplete="name"
+              required
+            >
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_smartphone_number">스마트폰 번호</label>
+            <input
+              type="tel"
+              name="smartphone_number"
+              id="id_smartphone_number"
+              class="form-control"
+              value="{{ form.smartphone_number.value|default_if_none:'' }}"
+              autocomplete="tel"
+              inputmode="tel"
+              placeholder="01012345678"
+              required
+            >
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_password">비밀번호</label>
+            <input
+              type="password"
+              name="password"
+              id="id_password"
+              class="form-control"
+              autocomplete="new-password"
+              required
+            >
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_password_confirm">비밀번호 확인</label>
+            <input
+              type="password"
+              name="password_confirm"
+              id="id_password_confirm"
+              class="form-control"
+              autocomplete="new-password"
+              required
+            >
+          </div>
+          {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+          {% endif %}
+          <button type="submit" class="btn btn-dark w-100">회원가입</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

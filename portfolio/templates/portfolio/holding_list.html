@@ -1,0 +1,119 @@
+{% extends "portfolio/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'portfolio/css/consulting.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="consult-shell mb-4">
+  <div class="consult-hero">
+    <div>
+      <p class="consult-eyebrow">Consulting Workspace</p>
+      <h1 class="mb-2">내 보유 종목 컨설팅</h1>
+      <p class="text-secondary mb-0">
+        사용자 보유 원장을 기준으로 물타기 판단, 확률, 리스크 게이트, 컨설팅 리포트를 확인합니다.
+      </p>
+    </div>
+    <div class="consult-hero-actions">
+      <a class="btn btn-outline-dark" href="{% url 'analysis_view' %}">Legacy 분석 보기</a>
+    </div>
+  </div>
+</section>
+
+<section class="mb-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h4 mb-0">활성 보유 종목</h2>
+    <span class="badge text-bg-dark">{{ active_holdings|length }}건</span>
+  </div>
+  {% if active_holdings %}
+  <div class="row g-4">
+    {% for item in active_holdings %}
+    <div class="col-12 col-lg-6">
+      <article class="card consult-card holding-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div>
+              <p class="consult-eyebrow mb-1">{{ item.holding.stock.market }}</p>
+              <h3 class="h5 mb-1">{{ item.holding.stock.name }}</h3>
+              <div class="text-secondary small">{{ item.holding.stock.code }}{% if item.holding.stock.sector %} · {{ item.holding.stock.sector }}{% endif %}</div>
+            </div>
+            <span class="badge rounded-pill text-bg-success">활성</span>
+          </div>
+          <div class="row g-3 small">
+            <div class="col-6">
+              <div class="consult-metric-label">평균단가</div>
+              <div class="consult-metric-value">{{ item.average_price_display }}</div>
+            </div>
+            <div class="col-6">
+              <div class="consult-metric-label">현재가</div>
+              <div class="consult-metric-value">{{ item.current_price_display }}</div>
+            </div>
+            <div class="col-6">
+              <div class="consult-metric-label">손익률</div>
+              <div class="consult-metric-value {% if item.loss_rate and item.loss_rate < 0 %}text-danger{% elif item.loss_rate and item.loss_rate > 0 %}text-success{% endif %}">
+                {{ item.loss_rate_display }}
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="consult-metric-label">추가 예산</div>
+              <div class="consult-metric-value">{{ item.max_additional_budget_display }}</div>
+            </div>
+            <div class="col-6">
+              <div class="consult-metric-label">보유수량</div>
+              <div class="consult-metric-value">{{ item.holding.quantity }}주</div>
+            </div>
+            <div class="col-6">
+              <div class="consult-metric-label">투입 원금</div>
+              <div class="consult-metric-value">{{ item.total_invested_amount_display }}</div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-4">
+            <div class="text-secondary small">
+              {% if item.current_price_date %}
+              시세 기준일 {{ item.current_price_date }}
+              {% else %}
+              최신 시세 데이터 없음
+              {% endif %}
+            </div>
+            <a class="btn btn-dark" href="{% url 'holding_consult_page' item.holding.id %}">컨설팅 보기</a>
+          </div>
+        </div>
+      </article>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card consult-card">
+    <div class="card-body">
+      <p class="mb-2">활성 보유 종목이 없습니다.</p>
+      <p class="text-secondary small mb-0">CSV 업로드 또는 legacy 거래 동기화 이후 다시 확인하세요.</p>
+    </div>
+  </div>
+  {% endif %}
+</section>
+
+{% if inactive_holdings %}
+<section>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h5 mb-0">비활성 보유 종목</h2>
+    <span class="badge text-bg-secondary">{{ inactive_holdings|length }}건</span>
+  </div>
+  <div class="row g-3">
+    {% for item in inactive_holdings %}
+    <div class="col-12 col-lg-6">
+      <article class="card consult-card holding-card holding-card-muted h-100">
+        <div class="card-body d-flex justify-content-between align-items-center gap-3">
+          <div>
+            <div class="fw-semibold">{{ item.holding.stock.name }} <span class="text-secondary">({{ item.holding.stock.code }})</span></div>
+            <div class="small text-secondary">청산 또는 비활성 상태로 평가 API는 실행되지 않습니다.</div>
+          </div>
+          <a class="btn btn-outline-secondary" href="{% url 'holding_consult_page' item.holding.id %}">상세 보기</a>
+        </div>
+      </article>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

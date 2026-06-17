@@ -1,0 +1,185 @@
+{% extends "portfolio/base.html" %}
+
+{% block title %}Toss 주문/체결 정합성 참고 비교 - theStock{% endblock %}
+{% block page_title %}Toss 정합성 비교{% endblock %}
+
+{% block content %}
+<div class="reconciliation-shell">
+  <section class="mb-4">
+    <p class="text-uppercase text-secondary small mb-1">Operations</p>
+    <h1 class="h3 mb-2">Toss 주문/체결 정합성 참고 비교</h1>
+    <div class="alert alert-warning mb-0">
+      <strong>staff-only read-only report입니다.</strong>
+      공식 실현손익 계산이 아닙니다. 주문을 실행하지 않습니다.
+      주문 생성, 변경, 취소 기능을 제공하지 않습니다.
+      order id 원문과 계좌 식별자는 표시하지 않습니다.
+      수수료와 세금은 별도 합산이며 평균단가에 포함하지 않습니다.
+    </div>
+  </section>
+
+  <section class="card mb-4">
+    <div class="card-body">
+      <form method="get" action="{% url 'toss-order-history-reconciliation-page' %}" class="row g-3">
+        <input type="hidden" name="run" value="1">
+        <div class="col-12 col-md-3">
+          <label class="form-label" for="symbol">종목</label>
+          <input class="form-control" id="symbol" name="symbol" value="{{ query.symbol }}" placeholder="035250" required>
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label" for="from_date">시작일</label>
+          <input class="form-control" id="from_date" name="from_date" value="{{ query.from_date }}" placeholder="YYYY-MM-DD">
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label" for="to_date">종료일</label>
+          <input class="form-control" id="to_date" name="to_date" value="{{ query.to_date }}" placeholder="YYYY-MM-DD">
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label" for="limit">limit</label>
+          <input class="form-control" id="limit" name="limit" value="{{ query.limit }}" inputmode="numeric">
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary" type="submit">비교 조회</button>
+          <span class="text-secondary small ms-2">기본 진입 화면에서는 Toss API를 호출하지 않습니다.</span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  {% if error %}
+    <section class="alert alert-danger">
+      <strong>{{ error.code }}</strong>
+      <div>{{ error.message }}</div>
+      <div class="small mt-2">입력값을 확인하세요.</div>
+    </section>
+  {% endif %}
+
+  {% if not run_requested %}
+    <section class="alert alert-info">
+      symbol을 입력하고 비교 조회를 실행하세요.
+      이 화면은 주문 기능을 제공하지 않는 운영자 참고 비교 화면입니다.
+    </section>
+  {% endif %}
+
+  {% if result %}
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">리포트 요약</h2>
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">report_type</div>
+            <strong>{{ result.report_type }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">symbol</div>
+            <strong>{{ result.symbol }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">from_date</div>
+            <strong>{{ result.from_date|default:"-" }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">to_date</div>
+            <strong>{{ result.to_date|default:"-" }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">limit</div>
+            <strong>{{ result.limit }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">read_only</div>
+            <strong>{{ result.read_only|yesno:"true,false" }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">order_execution</div>
+            <strong>{{ result.order_execution|yesno:"true,false" }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">network_call</div>
+            <strong>{{ network_call|yesno:"true,false" }}</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Order History 요약</h2>
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">order_count</div>
+            <strong>{{ result.order_history.order_count }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">has_next</div>
+            <strong>{{ result.order_history.has_next|yesno:"true,false" }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">next_cursor_present</div>
+            <strong>{{ result.order_history.next_cursor_present|yesno:"true,false" }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">used_cursor</div>
+            <strong>{{ result.order_history.used_cursor|yesno:"true,false" }}</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Aggregates</h2>
+        <div class="reconciliation-table-wrap">
+          <table class="table table-sm reconciliation-table">
+            <tbody>
+              <tr><th>buy_order_count</th><td class="reconciliation-number">{{ result.aggregates.buy_order_count }}</td></tr>
+              <tr><th>sell_order_count</th><td class="reconciliation-number">{{ result.aggregates.sell_order_count }}</td></tr>
+              <tr><th>skipped_execution_count</th><td class="reconciliation-number">{{ result.aggregates.skipped_execution_count }}</td></tr>
+              <tr><th>buy_filled_quantity_sum</th><td class="reconciliation-number">{{ result.aggregates.buy_filled_quantity_sum }}</td></tr>
+              <tr><th>sell_filled_quantity_sum</th><td class="reconciliation-number">{{ result.aggregates.sell_filled_quantity_sum }}</td></tr>
+              <tr><th>net_filled_quantity</th><td class="reconciliation-number">{{ result.aggregates.net_filled_quantity }}</td></tr>
+              <tr><th>buy_filled_amount_sum</th><td class="reconciliation-number">{{ result.aggregates.buy_filled_amount_sum }}</td></tr>
+              <tr><th>sell_filled_amount_sum</th><td class="reconciliation-number">{{ result.aggregates.sell_filled_amount_sum }}</td></tr>
+              <tr><th>buy_commission_sum</th><td class="reconciliation-number">{{ result.aggregates.buy_commission_sum }}</td></tr>
+              <tr><th>sell_commission_sum</th><td class="reconciliation-number">{{ result.aggregates.sell_commission_sum }}</td></tr>
+              <tr><th>buy_tax_sum</th><td class="reconciliation-number">{{ result.aggregates.buy_tax_sum }}</td></tr>
+              <tr><th>sell_tax_sum</th><td class="reconciliation-number">{{ result.aggregates.sell_tax_sum }}</td></tr>
+              <tr><th>weighted_average_buy_price</th><td class="reconciliation-number">{{ result.aggregates.weighted_average_buy_price }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">UserHolding 비교</h2>
+        <div class="reconciliation-table-wrap">
+          <table class="table table-sm reconciliation-table">
+            <tbody>
+              <tr><th>matching_user_holding_exists</th><td>{{ result.user_holding_comparison.matching_user_holding_exists|yesno:"true,false" }}</td></tr>
+              <tr><th>matching_user_holding_count</th><td class="reconciliation-number">{{ result.user_holding_comparison.matching_user_holding_count }}</td></tr>
+              <tr><th>user_holding_quantity</th><td class="reconciliation-number">{{ result.user_holding_comparison.user_holding_quantity|default:"-" }}</td></tr>
+              <tr><th>user_holding_average_price</th><td class="reconciliation-number">{{ result.user_holding_comparison.user_holding_average_price|default:"-" }}</td></tr>
+              <tr><th>quantity_difference</th><td class="reconciliation-number">{{ result.user_holding_comparison.quantity_difference|default:"-" }}</td></tr>
+              <tr><th>average_price_difference</th><td class="reconciliation-number">{{ result.user_holding_comparison.average_price_difference|default:"-" }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Warnings</h2>
+        <ul class="mb-0">
+          {% for warning in result.warnings %}
+            <li>{{ warning }}</li>
+          {% empty %}
+            <li>표시할 warning이 없습니다.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,368 @@
+{% extends "portfolio/base.html" %}
+
+{% block title %}Portfolio Summary - theStock{% endblock %}
+{% block page_title %}포트폴리오 요약{% endblock %}
+
+{% block content %}
+<div class="portfolio-summary-page">
+  <section class="mb-4">
+    <p class="text-uppercase text-secondary small mb-1">Portfolio Summary</p>
+    <h1 class="h3 mb-3">포트폴리오 요약</h1>
+    <div class="alert alert-info mb-0">
+      이 화면은 저장된 보유/일봉 데이터 기반 read-only 요약입니다.
+      가격은 저장된 DailyPrice의 최근 일봉 종가 기준입니다. 실시간 가격이 아닙니다.
+      실시간 가격이나 주문 실행 화면이 아니며, 주문 생성/정정/취소 기능을 제공하지 않습니다.
+      추가매수 시뮬레이션은 계산 전용이며 주문을 실행하지 않습니다.
+      매수/매도 추천이 아니며 수익을 보장하지 않습니다.
+    </div>
+  </section>
+
+  <section class="row g-3 mb-4" aria-label="summary counts">
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-3 h-100">
+        <div class="text-secondary small">보유 종목</div>
+        <div class="fs-4 fw-semibold">{{ summary.holding_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-3 h-100">
+        <div class="text-secondary small">활성 종목</div>
+        <div class="fs-4 fw-semibold">{{ summary.active_holding_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-3 h-100">
+        <div class="text-secondary small">가격 산출</div>
+        <div class="fs-4 fw-semibold">{{ summary.priced_holding_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-3 h-100">
+        <div class="text-secondary small">가격 누락</div>
+        <div class="fs-4 fw-semibold">{{ summary.missing_price_count }}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-4">
+    <h2 class="h5 mb-3">평가 합계</h2>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <tbody>
+          <tr>
+            <th scope="row">전체 투자금</th>
+            <td>{{ summary.totals.total_invested_amount_all }}</td>
+          </tr>
+          <tr>
+            <th scope="row">가격 산출 투자금</th>
+            <td>{{ summary.totals.total_invested_amount_priced }}</td>
+          </tr>
+          <tr>
+            <th scope="row">평가금액</th>
+            <td>{{ summary.totals.total_market_value_priced }}</td>
+          </tr>
+          <tr>
+            <th scope="row">평가손익</th>
+            <td>{{ summary.totals.total_profit_loss_amount_priced }}</td>
+          </tr>
+          <tr>
+            <th scope="row">평가손익률</th>
+            <td>{{ summary.totals.total_profit_loss_rate_priced|default:"-" }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% if summary.warnings %}
+  <section class="mb-4">
+    <h2 class="h6">Warnings</h2>
+    <ul class="mb-0">
+      {% for warning in summary.warnings %}
+      <li>{{ warning }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <h2 class="h5 mb-0">보유 종목</h2>
+      {% if include_inactive %}
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'portfolio_summary_page' %}">활성 종목만 보기</a>
+      {% else %}
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'portfolio_summary_page' %}?include_inactive=true">비활성 포함 보기</a>
+      {% endif %}
+    </div>
+    <p class="portfolio-scroll-hint text-secondary small mb-2">
+      표를 좌우로 스크롤할 수 있습니다.
+    </p>
+    <div class="table-responsive portfolio-table-scroll" tabindex="0" aria-label="포트폴리오 요약 표">
+      <table class="table table-striped table-hover align-middle portfolio-summary-table">
+        <thead>
+          <tr>
+            <th scope="col">Code</th>
+            <th scope="col">Name</th>
+            <th scope="col">Market</th>
+            <th scope="col">Qty</th>
+            <th scope="col">Average</th>
+            <th scope="col">최근 일봉 종가</th>
+            <th scope="col">일봉 기준일</th>
+            <th scope="col">Invested</th>
+            <th scope="col">Value</th>
+            <th scope="col">P/L</th>
+            <th scope="col">P/L %</th>
+            <th scope="col">Price status</th>
+            <th scope="col">Simulation</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in summary.holdings %}
+          <tr>
+            <td>{{ item.stock.code }}</td>
+            <td>{{ item.stock.name }}</td>
+            <td>{{ item.stock.market }}</td>
+            <td class="portfolio-number">{{ item.quantity }}</td>
+            <td class="portfolio-number">{{ item.average_price }}</td>
+            <td class="portfolio-number">{{ item.latest_price|default:"-" }}</td>
+            <td>{{ item.latest_price_date|default:"-" }}</td>
+            <td class="portfolio-number">{{ item.invested_amount|default:"-" }}</td>
+            <td class="portfolio-number">{{ item.market_value|default:"-" }}</td>
+            <td class="portfolio-number">{{ item.profit_loss_amount|default:"-" }}</td>
+            <td class="portfolio-number">{{ item.profit_loss_rate|default:"-" }}</td>
+            <td>{{ item.price_status }}</td>
+            <td>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary simulation-toggle"
+                aria-controls="simulation-panel-{{ item.holding_id }}"
+                aria-expanded="false"
+                data-target="simulation-panel-{{ item.holding_id }}"
+              >
+                평균단가 계산
+              </button>
+            </td>
+          </tr>
+          <tr id="simulation-panel-{{ item.holding_id }}" class="table-light simulation-row" hidden>
+            <td colspan="13">
+              <div class="border rounded p-3 simulation-panel">
+                <p class="small text-secondary mb-3">
+                  추가매수 시뮬레이션은 계산 전용이며 주문을 실행하지 않습니다.
+                  매수/매도 추천이 아닙니다. 수익을 보장하지 않습니다.
+                  수수료와 세금은 포함하지 않습니다.
+                </p>
+                <form
+                  class="simulation-form simulation-form-grid"
+                  data-simulation-endpoint="/api/holdings/{{ item.holding_id }}/additional-buy-simulation/"
+                  aria-describedby="simulation-help-{{ item.holding_id }}"
+                >
+                  <div class="row g-3 simulation-field-grid">
+                    <div class="col-12 col-md-4 simulation-field">
+                      <label class="form-label" for="additional-budget-{{ item.holding_id }}">추가 예산</label>
+                      <input
+                        class="form-control"
+                        id="additional-budget-{{ item.holding_id }}"
+                        name="additional_budget"
+                        inputmode="decimal"
+                        autocomplete="off"
+                      >
+                    </div>
+                    <div class="col-12 col-md-4 simulation-field">
+                      <label class="form-label" for="buy-price-{{ item.holding_id }}">계산 기준 가격</label>
+                      <input
+                        class="form-control"
+                        id="buy-price-{{ item.holding_id }}"
+                        name="buy_price"
+                        inputmode="decimal"
+                        autocomplete="off"
+                      >
+                      <div class="form-text">비워두면 저장된 최근 일봉 종가를 사용합니다.</div>
+                    </div>
+                    <div class="col-12 col-md-4 simulation-field">
+                      <label class="form-label" for="target-price-{{ item.holding_id }}">목표가 기준 계산</label>
+                      <input
+                        class="form-control"
+                        id="target-price-{{ item.holding_id }}"
+                        name="target_price"
+                        inputmode="decimal"
+                        autocomplete="off"
+                      >
+                    </div>
+                  </div>
+                  <p id="simulation-help-{{ item.holding_id }}" class="small text-secondary mt-3 mb-2">
+                    계산하기를 누르면 입력값 기준으로 평균단가 변화를 계산합니다.
+                    결과는 저장되지 않으며 주문을 실행하지 않습니다.
+                  </p>
+                  <button type="button" class="btn btn-sm btn-outline-secondary simulation-submit">계산하기</button>
+                </form>
+                <div class="simulation-result small text-secondary mt-3" aria-live="polite">
+                  계산 결과가 여기에 표시됩니다.
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="13" class="text-secondary">표시할 보유 종목이 없습니다.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+<script>
+  (function () {
+    function getCookie(name) {
+      var value = "; " + document.cookie;
+      var parts = value.split("; " + name + "=");
+      if (parts.length === 2) {
+        return decodeURIComponent(parts.pop().split(";").shift());
+      }
+      return "";
+    }
+
+    function setText(parent, tagName, text) {
+      var node = document.createElement(tagName);
+      node.textContent = text;
+      parent.appendChild(node);
+      return node;
+    }
+
+    function valueOrDash(value) {
+      if (value === null || value === undefined || value === "") {
+        return "-";
+      }
+      return String(value);
+    }
+
+    function appendMetric(list, label, value, suffix) {
+      var item = document.createElement("li");
+      item.textContent = label + ": " + valueOrDash(value) + (suffix || "");
+      list.appendChild(item);
+    }
+
+    function renderSafeError(resultEl, message) {
+      resultEl.classList.remove("text-secondary");
+      resultEl.classList.add("text-danger");
+      resultEl.replaceChildren();
+      setText(resultEl, "strong", "계산 오류");
+      setText(resultEl, "p", message || "계산을 완료하지 못했습니다. 입력값을 확인해 주세요.");
+    }
+
+    function renderSuccess(resultEl, data) {
+      if (data.simulation_only !== true || data.order_execution !== false) {
+        renderSafeError(resultEl, "응답 안전 조건을 확인하지 못했습니다. 주문은 실행되지 않았습니다.");
+        return;
+      }
+
+      var simulation = data.simulation || {};
+      var targetProjection = data.target_projection || null;
+      var warnings = Array.isArray(data.warnings) ? data.warnings : [];
+      var list = document.createElement("ul");
+      list.className = "mb-2";
+
+      resultEl.classList.remove("text-danger");
+      resultEl.classList.add("text-secondary");
+      resultEl.replaceChildren();
+      setText(resultEl, "strong", "계산 결과");
+      appendMetric(list, "추가 가능 수량", simulation.additional_quantity, "주");
+      appendMetric(list, "사용 예산", simulation.additional_invested_amount, "");
+      appendMetric(list, "남은 예산", simulation.unused_budget, "");
+      appendMetric(list, "추가 후 총 수량", simulation.new_quantity, "주");
+      appendMetric(list, "추가 후 평균단가", simulation.new_average_price, "");
+      appendMetric(list, "손익분기점", simulation.break_even_price, "");
+      appendMetric(list, "최근 일봉 종가 기준 예상 손익률", simulation.simulated_profit_loss_rate_at_latest, "%");
+      if (targetProjection) {
+        appendMetric(list, "목표가 기준 손익률", targetProjection.target_profit_loss_rate, "%");
+      }
+      resultEl.appendChild(list);
+
+      setText(resultEl, "p", "계산 전용이며 주문을 실행하지 않습니다.");
+      setText(resultEl, "p", "매수/매도 추천이 아닙니다. 수익을 보장하지 않습니다.");
+      setText(resultEl, "p", "수수료와 세금은 포함하지 않습니다.");
+
+      if (warnings.length) {
+        var warningList = document.createElement("ul");
+        warnings.forEach(function (warning) {
+          appendMetric(warningList, "안내", warning, "");
+        });
+        resultEl.appendChild(warningList);
+      }
+    }
+
+    function buildPayload(form) {
+      var payload = {};
+      ["additional_budget", "buy_price", "target_price"].forEach(function (fieldName) {
+        var input = form.querySelector('[name="' + fieldName + '"]');
+        if (input && input.value.trim() !== "") {
+          payload[fieldName] = input.value.trim();
+        }
+      });
+      return payload;
+    }
+
+    document.querySelectorAll(".simulation-toggle").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var targetId = button.getAttribute("data-target");
+        var target = document.getElementById(targetId);
+        if (!target) {
+          return;
+        }
+        var willOpen = target.hasAttribute("hidden");
+        target.toggleAttribute("hidden", !willOpen);
+        button.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      });
+    });
+
+    document.querySelectorAll(".simulation-form").forEach(function (form) {
+      var submitButton = form.querySelector(".simulation-submit");
+      var resultEl = form.parentElement.querySelector(".simulation-result");
+      if (!submitButton || !resultEl) {
+        return;
+      }
+
+      submitButton.addEventListener("click", function () {
+        var endpoint = form.getAttribute("data-simulation-endpoint");
+        var payload = buildPayload(form);
+
+        resultEl.classList.remove("text-danger");
+        resultEl.classList.add("text-secondary");
+        resultEl.textContent = "계산 중...";
+        submitButton.disabled = true;
+        form.setAttribute("aria-busy", "true");
+
+        fetch(endpoint, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken")
+          },
+          body: JSON.stringify(payload)
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, status: response.status, data: data };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok) {
+              var errorData = result.data || {};
+              renderSafeError(resultEl, errorData.message || errorData.error);
+              return;
+            }
+            renderSuccess(resultEl, result.data || {});
+          })
+          .catch(function () {
+            renderSafeError(resultEl, "일시적인 오류로 계산을 완료하지 못했습니다.");
+          })
+          .finally(function () {
+            submitButton.disabled = false;
+            form.removeAttribute("aria-busy");
+          });
+      });
+    });
+  }());
+</script>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'portfolio/base.html' %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="text-muted small">거래 건수</div><div class="fs-3 fw-bold">{{ tx_count }}</div></div></div></div>
+  <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="text-muted small">거래 종목 수</div><div class="fs-3 fw-bold">{{ stock_count }}</div></div></div></div>
+  <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="text-muted small">등록 티커 수</div><div class="fs-3 fw-bold">{{ symbol_count }}</div></div></div></div>
+  <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="text-muted small">미매핑 종목 수</div><div class="fs-3 fw-bold text-danger">{{ unmapped_count }}</div></div></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-8"><div class="card shadow-sm"><div class="card-body"><h5 class="mb-3">월별 매수/매도</h5><canvas id="monthlyChart" class="dashboard-chart dashboard-chart-wide" height="110"></canvas></div></div></div>
+  <div class="col-lg-4"><div class="card shadow-sm"><div class="card-body"><h5 class="mb-3">종목별 거래 빈도</h5><canvas id="stockChart" class="dashboard-chart dashboard-chart-square" height="220"></canvas></div></div></div>
+</div>
+
+<div class="card shadow-sm"><div class="card-body">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">최근 거래</h5>
+    <a href="/prices/" class="btn btn-sm btn-outline-primary">시세 보드</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead><tr><th>매매구분</th><th>종목</th><th>일시</th><th>수량</th><th>단가</th><th>총액</th></tr></thead>
+      <tbody>
+        {% for tx in recent %}
+        <tr>
+          <td>{{ tx.trade_type }}</td>
+          <td>{{ tx.stock_name }}</td>
+          <td>{{ tx.year }}-{{ tx.month }}-{{ tx.day }} {{ tx.hour }}:{{ tx.minute }}</td>
+          <td>{{ tx.quantity }}</td>
+          <td>{{ tx.unit_price }}</td>
+          <td>{{ tx.total_amount }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">데이터가 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div></div>
+
+<script>
+window.chartPayload = {{ stats_json|safe }};
+</script>
+{% endblock %}

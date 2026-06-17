@@ -1,0 +1,169 @@
+{% extends "portfolio/base.html" %}
+
+{% block title %}Toss 주문/체결 내역 조회 - theStock{% endblock %}
+{% block page_title %}Toss 주문 내역{% endblock %}
+
+{% block content %}
+<div class="order-history-shell">
+  <section class="mb-4">
+    <p class="text-uppercase text-secondary small mb-1">Operations</p>
+    <h1 class="h3 mb-2">Toss 주문/체결 내역 조회</h1>
+    <div class="alert alert-warning mb-0">
+      <strong>읽기 전용 조회입니다.</strong>
+      주문을 실행하지 않습니다. 주문 생성, 정정, 취소 기능을 제공하지 않습니다.
+      주문 식별자는 마스킹되어 표시됩니다. 계좌 식별자는 표시하지 않습니다.
+    </div>
+  </section>
+
+  <section class="card mb-4">
+    <div class="card-body">
+      <form method="get" action="{% url 'toss-order-history-page' %}" class="row g-3">
+        <input type="hidden" name="run" value="1">
+        <div class="col-12 col-md-2">
+          <label class="form-label" for="status">상태</label>
+          <select class="form-select" id="status" name="status">
+            <option value="CLOSED" {% if query.status == "CLOSED" %}selected{% endif %}>CLOSED</option>
+            <option value="OPEN" {% if query.status == "OPEN" %}selected{% endif %}>OPEN</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-2">
+          <label class="form-label" for="symbol">종목</label>
+          <input class="form-control" id="symbol" name="symbol" value="{{ query.symbol }}" placeholder="035250">
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label" for="from_date">시작일</label>
+          <input class="form-control" id="from_date" name="from_date" value="{{ query.from_date }}" placeholder="YYYY-MM-DD">
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label" for="to_date">종료일</label>
+          <input class="form-control" id="to_date" name="to_date" value="{{ query.to_date }}" placeholder="YYYY-MM-DD">
+        </div>
+        <div class="col-12 col-md-2">
+          <label class="form-label" for="limit">limit</label>
+          <input class="form-control" id="limit" name="limit" value="{{ query.limit }}" inputmode="numeric">
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary" type="submit">조회하기</button>
+          <span class="text-secondary small ms-2">기본 진입 화면에서는 Toss API를 호출하지 않습니다.</span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  {% if error %}
+    <section class="alert alert-danger">
+      <strong>{{ error.code }}</strong>
+      <div>{{ error.message }}</div>
+      {% if error.fields %}
+        <ul class="mb-0 mt-2">
+          {% for field, messages in error.fields.items %}
+            <li>{{ field }}: {{ messages|join:", " }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if not run_requested %}
+    <section class="alert alert-info">
+      조회 조건을 입력하고 조회하기 버튼을 누르면 read-only order history 조회를 실행합니다.
+      이 화면은 주문 기능을 제공하지 않습니다.
+    </section>
+  {% endif %}
+
+  {% if result %}
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">조회 결과 요약</h2>
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">status_filter</div>
+            <strong>{{ result.status_filter }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">symbol</div>
+            <strong>{% if result.symbol %}{{ result.symbol }}{% else %}전체{% endif %}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">order_count</div>
+            <strong>{{ result.order_count }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">has_next</div>
+            <strong>{{ result.has_next|yesno:"true,false" }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">next_cursor_present</div>
+            <strong>{{ result.next_cursor_present|yesno:"true,false" }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">network_call</div>
+            <strong>{{ network_call|yesno:"true,false" }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">dry_run</div>
+            <strong>{{ dry_run|yesno:"true,false" }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-secondary small">order_execution</div>
+            <strong>{{ order_execution|yesno:"true,false" }}</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
+          <h2 class="h5 mb-0">주문/체결 내역</h2>
+          <span class="text-secondary small">표를 좌우로 스크롤할 수 있습니다.</span>
+        </div>
+        <div class="order-history-table-wrap">
+          <table class="table table-sm align-middle order-history-table">
+            <thead>
+              <tr>
+                <th>masked order id</th>
+                <th>symbol</th>
+                <th>side</th>
+                <th>order_type</th>
+                <th>status</th>
+                <th class="text-end">quantity</th>
+                <th class="text-end">price</th>
+                <th>currency</th>
+                <th>ordered_at</th>
+                <th class="text-end">filled_quantity</th>
+                <th class="text-end">average_filled_price</th>
+                <th class="text-end">filled_amount</th>
+                <th>settlement_date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for order in result.orders %}
+                <tr>
+                  <td>{{ order.order_id_masked }}</td>
+                  <td>{{ order.symbol }}</td>
+                  <td>{{ order.side }}</td>
+                  <td>{{ order.order_type }}</td>
+                  <td>{{ order.status }}</td>
+                  <td class="order-history-number">{{ order.quantity }}</td>
+                  <td class="order-history-number">{{ order.price }}</td>
+                  <td>{{ order.currency }}</td>
+                  <td>{{ order.ordered_at }}</td>
+                  <td class="order-history-number">{{ order.execution.filled_quantity }}</td>
+                  <td class="order-history-number">{{ order.execution.average_filled_price }}</td>
+                  <td class="order-history-number">{{ order.execution.filled_amount }}</td>
+                  <td>{{ order.execution.settlement_date }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="13" class="text-secondary">조회된 주문/체결 내역이 없습니다.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

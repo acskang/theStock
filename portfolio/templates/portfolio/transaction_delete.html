@@ -1,0 +1,8 @@
+{% extends 'portfolio/base.html' %}
+{% block content %}
+<div class="card shadow-sm"><div class="card-body">
+  <h4 class="mb-3">거래 삭제</h4>
+  <p>{{ tx.stock_name }} / {{ tx.trade_type }} / {{ tx.quantity }}주 / {{ tx.unit_price }}원을 삭제하시겠습니까?</p>
+  <form method="post">{% csrf_token %}<button class="btn btn-danger">삭제</button></form>
+</div></div>
+{% endblock %}

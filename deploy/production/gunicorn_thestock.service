@@ -1,0 +1,25 @@
+[Unit]
+Description=Gunicorn for theStock
+After=network.target
+
+[Service]
+Type=notify
+PermissionsStartOnly=true
+User=cskang
+Group=www-data
+WorkingDirectory=/home/cskang/ganzskang/theStock
+RuntimeDirectory=thestock
+RuntimeDirectoryMode=0775
+ExecStartPre=/bin/rm -f /run/gunicorn_thestock.sock
+ExecStartPre=/bin/ln -s /run/thestock/gunicorn.sock /run/gunicorn_thestock.sock
+Environment=DJANGO_SETTINGS_MODULE=stock_service.settings.prod
+EnvironmentFile=/etc/thestock/thestock.env
+ExecStart=/home/cskang/miniconda3/envs/dj5/bin/gunicorn --config /home/cskang/ganzskang/theStock/deploy/production/gunicorn_thestock.config.py stock_service.wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target

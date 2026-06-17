@@ -1,0 +1,206 @@
+권장 구현 순서
+
+  1. consult 응답을 07 화면용으로 최소 보강
+  2. 로그인 route/template 추가
+  3. consulting page route + template skeleton
+  4. static JS API client + 상태 렌더링
+  5. CSS/grid/mobile 대응
+  6. holdings list 또는 analysis 진입 버튼 연결
+  7. Django integration test + consult schema 회귀 확인
+
+  검증 전략
+
+  - Django side
+      - page route 200/302
+      - anonymous 접근 시 login redirect
+      - owner mismatch 시 404
+      - consult page template context 확인
+  - API side
+      - consult payload에 화면 필수 필드 존재 확인
+  - UI side
+      - loading / error / partial / success DOM marker 확인
+      - scenario table empty/fallback 렌더링 확인
+
+  핵심 리스크
+
+  - 가장 큰 리스크는 프론트보다 auth와 응답 계약입니다.
+  - 현재 07 설계서의 예시 payload와 실제 payload가 달라서, 이걸 정리하지 않으면 화면 JS가 비정상적으로 복
+    잡해집니다.
+  - /analysis/를 그대로 진입점으로 쓰면 legacy 전역 데이터와 user holding 데이터가 다시 섞일 수 있습니다.
+
+
+
+
+• 아래 기준으로 정리하면 됩니다. 즉시 해야 할 항목은 “지금 서비스가 실사용되면 바로 문제를 만들 수 있는 것”, 나중에 해도 되는 항목은 “정확도/운영성/확장성을 높이는 개선”입니다.
+
+  즉시 해야 할 항목
+
+  | 우선순위 | 항목 | 이유 | 미루면 생기는 문제 |
+  |---|---|---|---|
+  (완료)| 1 | portfolio.Transaction ↔ UserHolding 동기화 또는 백필 규칙 확정 | 기존 UI 데이터와 새 물타기 엔진 데이터가 분리돼 있음 | 사용자가 거래를 입력해도 평가 엔진 결과가 실제 보유 상태와 안 맞을 수 있음 |
+
+  (완료)| 2 | 시세/수급/시장지수/리스크 이벤트 데이터 수집 파이프라인 추가 | 현재 엔진 품질은 입력 데이터에 전적으로 의존함 | 평가, 확률, 컨설팅 결과가 비거나 신뢰도 낮은 상태로 고정됨 |
+
+  (완료)| 3 | stocks / marketdata / risk events API 권한 축소 | 현재 인증 사용자에게 CRUD가 열려 있는 구조 | 일반 사용자가 핵심 기준 데이터를 수정/오염시킬 수 있음 |
+  
+  (완료)| 4 | 운영 기준 로그/에러 추적 최소 보강 | 계산형 API가 많고 실패 원인 추적이 중요함 | 실서비스에서 오판·장애 원인 추적이 어려움 |
+  
+  (완료)| 5 | README와 실제 API 범위 정합성 맞추기 | 현재 문서가 probability, consult까지 충분히 반영하지 않음| 팀 내 사용/테스트/인수인계가 혼선됨 |
+
+  나중에 해도 되는 항목
+
+  | 우선순위 | 항목 | 이유 | 기대 효과 |
+  |---|---|---|---|
+  (완료)| 1 | stock quality용 재무 데이터 모델 추가 | 지금은 대부분 UNKNOWN/B로 평가됨 | 컨설팅 품질과 종목 필터링 정확도 상승 |
+권장 구현 순서
+  1. FinancialSnapshot 모델 + migration
+  2. stock_quality_service 실평가 로직
+  3. stocks 단위 테스트 보강
+  4. StockDataCollectionStatus에 financial type 추가
+  5. collect_financial_snapshots command
+  6. refresh_decision_inputs / audit_decision_input_quality 연결
+  7. consult 회귀 테스트(완료)
+
+  (진행)| 2 | 확률 엔진 historical component 고도화 | 현재는 pragmatic fallback 버전 | 성공/실패 확률의 설명력개선 |
+
+  
+  (완료)| 3 | probability / consult 결과 저장 여부 결정 | 지금은 비저장 계산 API | 이력 분석, 회고, 사용자 비교 기능 가능 |
+  
+  (완료)| 4 | risk gate의 시간 감쇠를 실제 status 결정에 반영 | 현재는 details에만 기록 | 오래된 악재와 최신악재를 더 합리적으로 구분 가능 |
+  
+  | 5 | consult 응답 전용 serializer / OpenAPI 문서 추가 | 지금은 dict builder 기반 | 스키마 안정성, 프론트/외부 연동 편의 향상 |
+  
+  | 6 | CI/CD, structured logging, 모니터링 체계화 | 현재도 테스트는 충분히 있음 | 릴리스 안정성과 운영
+  가시성 향상 |
+  
+  | 7 | 지표 계산 캐시/성능 최적화 | 현재는 데이터 규모가 작아 큰 문제 없음 | 데이터가 커질 때 응답시간
+  과 비용 절감 |
+  
+  | 8 | 시장 국면 판단에 추가 매크로 변수 반영 | 지금은 단순 분류기 | 컨설팅 정교화 |
+
+  권장 실행 순서
+
+  1. 데이터 동기화 규칙 확정
+  2. 데이터 수집 파이프라인 추가
+  3. 권한 잠그기
+  4. 운영 로그/문서 정리
+  5. 이후 정확도 고도화 항목 착수
+
+  한 줄로 요약하면, 지금 가장 먼저 손봐야 하는 것은 모델/데이터 연결과 입력 데이터 공급, 그 다음이 권한/
+  운영 정리, 그 이후가 정확도 고도화입니다.
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+
+Summary
+  01단계부터 06단계까지의 핵심 구현 범위는 현재 모두 들어가 있습니다. 2026년 4월 29일 기준으로 python3
+  manage.py test 전체 89개 테스트가 통과했고, evaluate, decision history, probability, consult API까지
+  연결돼 있습니다.
+
+  남은 항목은 “기능 미구현”보다 “도메인 연결, 운영 완성도, 데이터 원천, 권한/문서 정합성”에 집중돼 있
+  습니다. 아래는 단계별로 아직 남아 있는 risks / follow-ups만 정리한 내용입니다.
+
+  01 Foundation 기준으로 남아 있는 것
+
+  - 기존 portfolio.Transaction 계층과 새 holdings.UserHolding 계층이 여전히 분리돼 있습니다. 자동 동기
+    화나 백필이 없습니다. 기존 UI에서 쌓은 거래내역이 새 물타기 엔진 입력으로 자동 연결되지 않습니다.
+  - 기존 시세 보드/심볼 매핑 흐름과 새 Stock, DailyPrice, MarketIndex 계층도 별개입니다. 실사용에서는
+    데이터 이중 관리 위험이 있습니다.
+  - Stock, DailyPrice, InvestorFlow, MarketIndex, RiskEvent API가 현재 ModelViewSet 기반이라 인증된 사
+    용자에게 CRUD가 열려 있습니다. 운영 서비스라면 관리자 전용 권한이나 read/write 분리가 필요합니다.
+      - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/stocks/views.py
+      - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/marketdata/views.py
+      - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/decisions/views.py
+
+  02 Scoring Engine 기준으로 남아 있는 것
+
+  - 스코어링 엔진은 동작하지만 규칙 기반 휴리스틱입니다. 실전 성능 검증이나 파라미터 튜닝은 아직 없습
+    니다.
+  - 외부 데이터 수집기가 없어서 DailyPrice, InvestorFlow, MarketIndex, RiskEvent를 수동/seed로 넣어야
+    합니다. 데이터가 비면 엔진 정확도도 바로 떨어집니다.
+  - 기술지표 계산 결과를 별도 캐시/저장하지 않기 때문에, 향후 데이터 규모가 커지면 반복 계산 비용이 생
+    길 수 있습니다.
+
+  03 API Workflow 기준으로 남아 있는 것
+
+  - evaluate는 저장되지만, probability와 consult는 현재 비저장성 계산 API입니다. 결과 이력, 감사 추적,
+    비교 분석이 필요하면 별도 저장 모델이 추가로 필요합니다.
+  - API는 동작하지만 OpenAPI/Swagger 같은 계약 문서가 없습니다. 외부 소비자가 붙기 시작하면 응답 스키
+    마 관리가 부담이 됩니다.
+  - 인증 방식이 SessionAuthentication/BasicAuthentication 중심이라 서비스형 API로 쓰기에는 제한적입니
+    다. 토큰/JWT, rate limiting, audit log 강화가 후속 과제입니다.
+
+  04 Quality & Release 기준으로 남아 있는 것
+
+  - settings 분리는 됐지만, 운영 관점에서 로깅은 아직 콘솔 중심입니다. 구조화 로그, 외부 수집, 알림 연
+    계는 없습니다.
+  - CI/CD, 정적 분석, 자동 배포, smoke test 파이프라인은 아직 없습니다.
+  - README가 현재 구현 범위를 완전히 따라가지 못합니다. 특히 probability와 consult endpoint 설명이 빠
+    져 있습니다.
+      - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/README.md
+  - 샘플 데이터 command는 있지만, 운영용 데이터 적재나 정기 갱신 전략은 없습니다.
+
+  05 Probability Engine 기준으로 남아 있는 것
+
+  - 확률 엔진의 historical component는 설계서의 완전한 feature-distance 방식이 아니라 pragmatic
+    fallback입니다. 즉, “동작하는 1차 버전”이지 고도화 버전은 아닙니다.
+  - 확률 결과도 데이터 품질에 민감합니다. 시장/수급/가격 이력이 부족하면 확률은 계산되더라도 신뢰도가
+    낮아집니다.
+  - 확률 결과 저장, 확률 이력 조회, 확률 비교 리포트는 아직 없습니다.
+
+  06 Consulting System 기준으로 남아 있는 것
+
+  - stock quality는 재무 데이터 모델이 없어서 활성 종목이면 대체로 UNKNOWN/B로 귀결됩니다. 이 엔진을
+    의미 있게 쓰려면 재무 스냅샷 모델이나 외부 재무 데이터 소스가 필요합니다.
+      - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/stocks/services/
+        stock_quality_service.py
+  - risk gate는 이벤트의 age/time-weight를 details에만 남기고, 최종 status 완화에는 아직 쓰지 않습니
+    다.
+      - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/decisions/services/
+        risk_gate_service.py
+  - market regime는 현재 단순 분류기입니다. 더 많은 지수, 변동성 지표, 환율/금리 맥락이 들어가야 정교
+    해집니다.
+  - consult 응답은 전용 response serializer가 아니라 dict builder 기반입니다. 지금은 충분하지만, 스키
+    마가 더 커지면 drift 위험이 있습니다.
+      - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/decisions/services/
+        consulting_service.py
+  - 확률 엔진 실패 시 graceful degradation은 구현돼 있지만, 실패 유형별 세분화 대응은 아직 없습니다.
+
+  우선순위 높은 Follow-ups
+
+  1. portfolio.Transaction → UserHolding 자동 동기화 또는 백필 전략 확정
+  2. 시세/수급/시장지수/리스크 이벤트 수집 파이프라인 추가
+  3. stocks/marketdata/risk events CRUD 권한을 관리자 전용으로 축소
+  4. probability/consult 결과 저장 여부 결정
+  5. 재무 데이터 모델 추가로 stock quality 실질화
+  6. README와 API 문서 갱신
+  7. 운영 로깅, 모니터링, CI/CD 보강
+
+  Files checked
+
+  - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/README.md
+  - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/holdings/views.py
+  - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/holdings/urls.py
+  - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/stocks/views.py
+  - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/marketdata/views.py
+  - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/decisions/views.py
+  - /home/cskang/_ahading/주식/주식-gpt/stock_service_enhanced_v2/decisions/services/
+    consulting_service.py
+
+  Commands run
+
+  - python3 manage.py test --verbosity 1
+  - sed -n ... on current README, views, urls, consulting service
+
+  Verification
+
+  - python3 manage.py test --verbosity 1: 89 tests passed
+  - 현재 라우트에 /evaluate/, /decisions/, /probability/, /consult/가 모두 존재함을 확인
+  - README가 최신 API 범위를 완전히 반영하지 못하고 있음을 확인
+
+  Risks / follow-ups
+
+  - 가장 큰 실질 리스크는 “엔진 정확도”보다 “입력 데이터 공급과 도메인 연결 부재”입니다.
+  - 다음 단계로는 기능 추가보다 데이터 파이프라인과 권한/운영 정리가 우선입니다.
+
+  원하면 다음 턴에서 이 내용을 바탕으로 즉시 해야 할 항목 / 나중에 해도 되는 항목으로 다시 우선순위 표
+  로 정리해드리겠습니다.

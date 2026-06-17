@@ -1,0 +1,297 @@
+:root {
+  --consult-ink: var(--app-text-strong);
+  --consult-subdued-ink: var(--app-text-muted);
+  --consult-surface: var(--app-surface);
+  --consult-panel: linear-gradient(145deg, #fffdf7 0%, #f4f7fb 100%);
+  --consult-border: var(--app-border);
+  --consult-accent: #d9a441;
+  --consult-danger: #b42318;
+  --consult-warning: #b54708;
+  --consult-success: #067647;
+  --consult-shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.05);
+  --consult-shadow-card: 0 12px 32px rgba(15, 23, 42, 0.04);
+  --consult-soft-fill: rgba(20, 33, 61, 0.03);
+  --consult-soft-border: rgba(20, 33, 61, 0.06);
+  --consult-progress-bg: rgba(20, 33, 61, 0.08);
+  --consult-accent-surface: #fff9ed;
+}
+
+html[data-theme="dark"] {
+  --consult-panel: radial-gradient(circle at top left, rgba(217, 164, 65, 0.08), transparent 32%), linear-gradient(145deg, #0f172a 0%, #111c31 100%);
+  --consult-danger: #f87171;
+  --consult-warning: #fbbf24;
+  --consult-success: #34d399;
+  --consult-shadow-soft: 0 22px 48px rgba(2, 6, 23, 0.35);
+  --consult-shadow-card: 0 14px 34px rgba(2, 6, 23, 0.28);
+  --consult-soft-fill: rgba(148, 163, 184, 0.08);
+  --consult-soft-border: rgba(148, 163, 184, 0.12);
+  --consult-progress-bg: rgba(148, 163, 184, 0.16);
+  --consult-accent-surface: rgba(217, 164, 65, 0.10);
+}
+
+.consult-shell {
+  color: var(--consult-ink);
+}
+
+.consult-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 1.75rem;
+  border-radius: 1.5rem;
+  background: radial-gradient(circle at top left, rgba(217, 164, 65, 0.16), transparent 35%), var(--consult-panel);
+  border: 1px solid var(--consult-border);
+}
+
+.consult-hero-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.consult-eyebrow {
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--consult-subdued-ink);
+}
+
+.consult-card {
+  background: var(--consult-surface);
+  border: 1px solid var(--consult-border);
+  box-shadow: var(--consult-shadow-soft);
+}
+
+.holding-card {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.holding-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 45px rgba(15, 23, 42, 0.08);
+}
+
+.holding-card-muted {
+  opacity: 0.86;
+}
+
+.consult-header-grid .consult-stat-card {
+  height: 100%;
+}
+
+.consult-stat-card,
+.consult-panel-card {
+  height: 100%;
+  padding: 1rem 1.1rem;
+  border-radius: 1.15rem;
+  background: var(--consult-surface);
+  border: 1px solid var(--consult-border);
+  box-shadow: var(--consult-shadow-card);
+}
+
+.consult-metric-label {
+  font-size: 0.8rem;
+  color: var(--consult-subdued-ink);
+  margin-bottom: 0.35rem;
+}
+
+.consult-stat-value,
+.consult-metric-value {
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.consult-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.consult-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.consult-grid > * {
+  min-width: 0;
+}
+
+.span-12 { grid-column: span 12; }
+.span-8 { grid-column: span 8; }
+.span-6 { grid-column: span 6; }
+.span-4 { grid-column: span 4; }
+
+.consult-grade-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.grade-A { background: rgba(6, 118, 71, 0.12); color: var(--consult-success); }
+.grade-B { background: rgba(217, 164, 65, 0.18); color: #8a5a00; }
+.grade-C { background: rgba(181, 71, 8, 0.12); color: var(--consult-warning); }
+.grade-D { background: rgba(180, 35, 24, 0.12); color: var(--consult-danger); }
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-CRITICAL,
+.status-BLOCK,
+.status-risk_off,
+.status-capitulation {
+  background: rgba(180, 35, 24, 0.12);
+  color: var(--consult-danger);
+}
+
+.status-CAUTION,
+.status-pullback,
+.status-sideways,
+.status-UNKNOWN {
+  background: rgba(181, 71, 8, 0.12);
+  color: var(--consult-warning);
+}
+
+.status-PASS,
+.status-risk_on,
+.status-rebound,
+.status-healthy,
+.status-Q1,
+.status-Q2 {
+  background: rgba(6, 118, 71, 0.12);
+  color: var(--consult-success);
+}
+
+.status-degraded {
+  background: rgba(181, 71, 8, 0.12);
+  color: var(--consult-warning);
+}
+
+.status-critical {
+  background: rgba(180, 35, 24, 0.12);
+  color: var(--consult-danger);
+}
+
+.status-Q3,
+.status-Q4,
+.status-Q5 {
+  background: rgba(181, 71, 8, 0.12);
+  color: var(--consult-warning);
+}
+
+.consult-loading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 10rem;
+}
+
+.consult-warning-list,
+.consult-check-list,
+.consult-factors-list {
+  padding-left: 1rem;
+  margin-bottom: 0;
+}
+
+.consult-warning-list li,
+.consult-check-list li,
+.consult-factors-list li {
+  margin-bottom: 0.4rem;
+}
+
+.consult-score-row {
+  margin-bottom: 0.85rem;
+}
+
+.consult-score-row:last-child {
+  margin-bottom: 0;
+}
+
+.consult-score-row .progress {
+  height: 0.6rem;
+  background: var(--consult-progress-bg);
+}
+
+.consult-probability-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.consult-probability-box {
+  padding: 0.9rem;
+  border-radius: 1rem;
+  background: var(--consult-soft-fill);
+  border: 1px solid var(--consult-soft-border);
+}
+
+.consult-table-wrap {
+  overflow-x: auto;
+}
+
+.consult-table {
+  min-width: 880px;
+}
+
+.consult-kpi {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--consult-border);
+}
+
+.consult-kpi:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.consult-label-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.consult-subdued {
+  color: var(--consult-subdued-ink);
+}
+
+.consult-disclaimer {
+  border-left: 4px solid var(--consult-accent);
+  background: var(--consult-accent-surface);
+}
+
+@media (max-width: 991.98px) {
+  .consult-hero {
+    flex-direction: column;
+  }
+
+  .consult-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .span-12,
+  .span-8,
+  .span-6,
+  .span-4 {
+    grid-column: span 1;
+  }
+
+  .consult-probability-strip {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,63 @@
+{% extends 'portfolio/base.html' %}
+{% block content %}
+<div class="card shadow-sm mb-4"><div class="card-body">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">시세 보드</h4>
+    <a class="btn btn-outline-secondary btn-sm" href="/symbols/">티커 관리 화면</a>
+  </div>
+  <p class="text-muted mb-0">시세 조회에 실패한 종목은 아래 표에서 바로 티커를 저장할 수 있습니다. 코스피는 <code>.KS</code>, 코스닥은 <code>.KQ</code> 를 붙여 입력하세요.</p>
+</div></div>
+
+<div class="card shadow-sm mb-4"><div class="card-body">
+  <div class="table-responsive"><table class="table table-hover align-middle">
+    <thead><tr><th>종목</th><th>티커</th><th>현재가</th><th>전일종가</th><th>등락률</th><th>상태</th></tr></thead>
+    <tbody>
+      {% for item in snapshots %}
+      <tr class="{% if item.error %}table-warning{% endif %}">
+        <td>{{ item.stock_name }}</td>
+        <td>{{ item.ticker|default:'-' }}</td>
+        <td>{{ item.current_price|default:'-' }}</td>
+        <td>{{ item.previous_close|default:'-' }}</td>
+        <td>{% if item.change_rate is not None %}{{ item.change_rate }}%{% else %}-{% endif %}</td>
+        <td>
+          {% if item.error %}
+            <span class="badge text-bg-warning">{{ item.error }}</span>
+          {% else %}
+            <span class="badge text-bg-success">정상</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div></div>
+
+<div class="card shadow-sm"><div class="card-body">
+  <h5 class="mb-3">수동 티커 매핑</h5>
+  {% if resolved_name %}
+    <div class="alert alert-success py-2">{{ resolved_name }} 티커를 저장했고, 다음 새로고침부터 시세 조회에 반영됩니다.</div>
+  {% endif %}
+  <div class="row g-4">
+    {% for row in unresolved_rows %}
+    <div class="col-lg-6">
+      <div class="border rounded p-3 h-100">
+        <div class="fw-semibold mb-2">{{ row.snapshot.stock_name }}</div>
+        <div class="small text-muted mb-3">실패 사유: {{ row.snapshot.error }}</div>
+        <form method="post" class="row g-2">
+          {% csrf_token %}
+          {{ row.form.stock_name }}
+          <div class="col-md-7">{{ row.form.ticker }}</div>
+          <div class="col-md-5">{{ row.form.note }}</div>
+          <div class="col-12 d-flex justify-content-between align-items-center">
+            <div class="small text-muted">예: 삼성전자 005930.KS / 에코프로비엠 247540.KQ</div>
+            <button class="btn btn-primary btn-sm">저장</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12"><div class="alert alert-success mb-0">모든 거래 종목의 티커가 등록되어 있습니다.</div></div>
+    {% endfor %}
+  </div>
+</div></div>
+{% endblock %}

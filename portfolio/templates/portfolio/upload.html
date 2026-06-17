@@ -1,0 +1,12 @@
+{% extends 'portfolio/base.html' %}
+{% block content %}
+<div class="card shadow-sm"><div class="card-body">
+  <h4 class="mb-3">CSV 업로드</h4>
+  <p class="text-muted">필수 컬럼: 매매구분, 종목, 년, 월, 일, 시, 분, 수량(주), 단가(원)</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-primary">업로드</button>
+  </form>
+</div></div>
+{% endblock %}

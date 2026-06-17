@@ -1,0 +1,134 @@
+{% extends "portfolio/base.html" %}
+
+{% block title %}Manual - theStock{% endblock %}
+{% block page_title %}Manual{% endblock %}
+
+{% block content %}
+<section class="manual-page">
+  <header class="manual-hero">
+    <div>
+      <p class="section-eyebrow">Operations Manual</p>
+      <h2>theStock manual.</h2>
+      <p>현재 구현 상태, 운영 정책, API, smoke 결과, 후속 설계를 한 화면에서 확인합니다.</p>
+    </div>
+    <div class="manual-stats">
+      <div class="manual-stat">
+        <span>Documents</span>
+        <strong>{{ manual_stats.document_count }}</strong>
+      </div>
+      <div class="manual-stat">
+        <span>Groups</span>
+        <strong>{{ manual_stats.stage_count }}</strong>
+      </div>
+    </div>
+  </header>
+
+  <section class="manual-filter" aria-label="Manual filters">
+    <form method="get" action="{% url 'manual_page' %}" class="manual-filter__form">
+      <label for="manual-stage">
+        Group
+        <select id="manual-stage" name="stage" data-manual-stage-select>
+          {% for stage in manual_stage_options %}
+            <option value="{{ stage.value }}" {% if stage.value == current_stage %}selected{% endif %}>{{ stage.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label for="manual-doc">
+        Document
+        <select id="manual-doc" name="doc" data-manual-doc-select>
+          {% for option in current_stage_files %}
+            <option value="{{ option.value }}" data-stage="{{ option.stage }}" {% if option.value == selected_doc_path %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label for="manual-query">
+        Search
+        <input id="manual-query" type="search" name="q" value="{{ search_query }}" placeholder="문서 내용 검색">
+      </label>
+      <button type="submit">Open</button>
+    </form>
+    <div class="manual-filter__actions">
+      <button type="button" data-manual-sidebar-toggle aria-expanded="true">목록 접기</button>
+    </div>
+  </section>
+
+  <div class="manual-layout" data-manual-layout>
+    <aside class="manual-sidebar" aria-label="Manual document list">
+      {% for stage in manual_stage_groups %}
+        <section>
+          <h3>{{ stage.label }}</h3>
+          <ul>
+            {% for option in stage.files %}
+              <li>
+                <a href="{% url 'manual_view' option.value %}" class="{% if option.value == selected_doc_path %}is-active{% endif %}">
+                  {{ option.label }}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% empty %}
+        <div class="manual-empty">표시할 문서가 없습니다.</div>
+      {% endfor %}
+    </aside>
+
+    <section class="manual-main" aria-label="Manual content">
+      {% if search_query %}
+        <section class="manual-panel">
+          <div class="manual-panel__header">
+            <h2>검색 결과</h2>
+            <span>{{ search_results|length }}건</span>
+          </div>
+          <div class="manual-search-results">
+            {% for result in search_results %}
+              <article>
+                <a href="{% url 'manual_view' result.relative_path %}?q={{ search_query|urlencode }}">{{ result.title }}</a>
+                <span>{{ result.stage_label }}</span>
+                <p>{{ result.excerpt }}</p>
+              </article>
+            {% empty %}
+              <div class="manual-empty">검색 결과가 없습니다.</div>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      {% if current_doc %}
+        <article class="manual-panel">
+          <div class="manual-doc-header">
+            <div>
+              <span>{{ current_doc.stage_label }}</span>
+              <h2>{{ current_doc.title }}</h2>
+              <p>{{ current_doc.relative_path }}</p>
+            </div>
+            <a href="{% url 'manual_raw' current_doc.relative_path %}" target="_blank" rel="noopener">원문 보기</a>
+          </div>
+          <div class="manual-content">
+            {{ current_doc.html_content }}
+          </div>
+        </article>
+      {% else %}
+        <section class="manual-panel">
+          <div class="manual-empty">표시할 문서를 선택하세요.</div>
+        </section>
+      {% endif %}
+    </section>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var layout = document.querySelector("[data-manual-layout]");
+    var toggle = document.querySelector("[data-manual-sidebar-toggle]");
+    if (!layout || !toggle) {
+      return;
+    }
+
+    toggle.addEventListener("click", function () {
+      var collapsed = layout.classList.toggle("manual-layout--sidebar-collapsed");
+      toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      toggle.textContent = collapsed ? "목록 펼치기" : "목록 접기";
+    });
+  }());
+</script>
+{% endblock %}
