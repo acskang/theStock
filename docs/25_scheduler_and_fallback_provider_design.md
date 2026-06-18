@@ -4,13 +4,22 @@
 
 This document defines how `theStock` should connect Toss OpenAPI ingestion to a scheduler and fallback provider policy.
 
-This is a design-only step. It does not register a scheduler, change provider defaults, modify settings, or call Toss APIs.
+This document started as a design-only step. As of 2026-06-18, the repository also contains an OS-level systemd timer/service candidate for decision input collection:
+
+```text
+deploy/production/thestock_investor_flow_collect.service
+deploy/production/thestock_investor_flow_collect.timer
+```
+
+The repository files are the desired operational definition. The actual `/etc/systemd/system` unit on a server must still be checked separately because it may lag behind the repository copy.
 
 ## 1. Current State
 
 ### Scheduler / Job Runtime
 
-Current repository inspection shows no active Celery, Celery Beat, django-crontab, APScheduler, systemd timer, or crontab integration for data jobs.
+Current repository inspection shows no Celery, Celery Beat, django-crontab, or APScheduler integration for data jobs.
+
+The repository now includes a systemd oneshot/timer candidate for the decision input collection flow. It uses Django management commands and does not introduce a new worker dependency.
 
 The current operational pattern is management-command based:
 
@@ -24,7 +33,7 @@ The current operational pattern is management-command based:
 - `update_data_quality`
 - Toss-specific smoke and ingestion commands
 
-Deployment files currently cover web runtime operations, not scheduled data ingestion.
+Deployment files now include scheduled decision input ingestion candidates in addition to web runtime operations.
 
 ### Existing Pipeline Orchestration
 
@@ -57,10 +66,10 @@ Project settings currently default `DATA_PIPELINE_PROVIDER` to `auto`.
 `AutoProvider` delegates by domain:
 
 - stock master: KRX provider
-- daily prices: Finance provider
-- investor flows: KRX provider
+- daily prices: Finance provider, with domestic Naver daily price fallback in the direct collector path
+- investor flows: Naver investor flow fallback first for domestic stocks, with pykrx as a secondary helper where applicable
 - market indices: Finance provider
-- risk events: Disclosure provider
+- risk events: OpenDART disclosure provider, with Naver notice/news fallback when the API key or corp code path cannot produce rows
 - financial snapshots: FinancialStatement provider
 
 Toss is intentionally opt-in:
@@ -240,6 +249,32 @@ Recommended profiles:
 | `daily-close-commit` | after dry-run passes | DailyPrice commit |
 | `holdings-dry-run` | manual or low frequency | holdings candidate validation |
 | `holdings-commit` | explicit opt-in only | UserHolding sync |
+
+### Implemented Repository Candidate
+
+The current repository-level systemd candidate is intentionally management-command based:
+
+```bash
+python manage.py collect_daily_prices --days 240
+python manage.py collect_market_indices --codes KOSPI KOSDAQ USDKRW NASDAQ SP500 --days 240
+python manage.py collect_investor_flows --days 60
+python manage.py collect_risk_events --days 365
+python manage.py collect_financial_snapshots --years 2
+python manage.py update_data_quality --all-stocks
+```
+
+This job updates only local market/decision input data:
+
+```text
+DailyPrice
+MarketIndex
+InvestorFlow
+RiskEvent
+FinancialSnapshot
+DataQualitySnapshot
+```
+
+It does not call Toss order creation, order modification, order cancellation, or any automatic trading flow.
 
 ## 5. DailyPrice Automation Design
 

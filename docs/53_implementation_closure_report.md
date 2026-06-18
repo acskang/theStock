@@ -1,5 +1,10 @@
 # Implementation Closure Report
 
+> Status note, 2026-06-18:
+> This report is an older closure snapshot. It is kept for historical context, but it is no longer the latest source of truth.
+> Since this report, the project added user-scoped Toss integrations, Toss dashboard/order/market/trading-info screens, holdings dry-run/apply flows, Toss trade sync models, split profit/loss analysis screens, consulting input collectors, and holding budget settings.
+> Use `docs/00_current_state_entrypoint.md`, `docs/15_operations_runbook.md`, `docs/25_scheduler_and_fallback_provider_design.md`, `docs/54_technical_architecture_and_toss_credential_design.md`, and `docs/58_holdings_realized_profit_screen_split_design.md` for current implementation guidance.
+
 ## 1. 목적
 
 이 문서는 theStock Django 프로젝트의 현재 구현을 일단락 상태로 동결하기 위한 최종 정리 문서다.

@@ -407,22 +407,25 @@ class StockQualityResult:
 
 ## 7.5 1차 구현 원칙
 
-현재 재무 모델이 없다면 다음처럼 동작한다.
+2026-06-18 현재 `stocks.FinancialSnapshot` 모델과 OpenDART 기반 `collect_financial_snapshots` 명령이 구현되어 있다. Stock Quality Engine은 저장된 재무 스냅샷을 사용해 Q1~Q5/UNKNOWN 품질 등급을 계산한다.
+
+재무 데이터가 없거나 ETF/ETN처럼 일반 기업 재무제표 평가 대상이 아니면 다음처럼 동작한다.
 
 ```text
-1. Stock 기본 정보와 RiskEvent만 사용한다.
-2. 재무 데이터가 없으면 quality_grade = UNKNOWN.
-3. UNKNOWN은 시스템 실패가 아니라 데이터 품질 경고로 처리한다.
-4. 향후 FinancialSnapshot 모델을 추가할 수 있도록 details 구조를 열어둔다.
+1. quality_grade = UNKNOWN.
+2. UNKNOWN은 시스템 실패가 아니라 데이터 품질 경고로 처리한다.
+3. details에는 financial_data_available, snapshot_count, latest_snapshot 등 safe metadata만 포함한다.
+4. OpenDART 수집 후에는 update_data_quality --all-stocks를 실행해 화면 품질 경고를 최신화한다.
 ```
 
-향후 추가 권장 모델:
+현재 재무 스냅샷 모델:
 
 ```text
 FinancialSnapshot
 - stock
 - fiscal_year
-- fiscal_quarter
+- period_type
+- reported_date
 - revenue
 - operating_profit
 - net_income
@@ -505,6 +508,8 @@ additional_amount / max_additional_budget * 0.2
 ```
 
 max_additional_budget이 0이거나 없으면 penalty는 0.2로 보수 처리한다.
+
+`max_additional_budget`은 `/consulting/holdings/`의 `추가예산설정` 패널에서 사용자가 관리한다. 전체 추가 예산을 입력하면 활성 보유 종목에 균등 배분하고, 종목별 금액을 수정하면 전체 예산과 배정 비중이 다시 계산된다. 저장 결과는 `UserHolding.max_additional_budget`에 반영되며, 주문 실행이나 자동매매로 연결되지 않는다.
 
 ## 8.6 status 기준
 

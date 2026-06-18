@@ -74,6 +74,21 @@ fallback provider는 다음 목적을 위해 유지한다.
 
 Toss API Key, Secret Key, Access Token, 계좌번호는 문서, Git, 테스트 fixture에 저장하지 않는다. `.env.example`에는 변수명만 남기고 실제 값은 운영 서버의 `.env` 또는 secret manager에서 관리한다.
 
+2026-06-18 현재 물타기 컨설팅 입력 데이터 수집은 다음 운영 보조 provider를 함께 사용한다.
+
+```text
+1. DailyPrice: yfinance 우선, 국내 종목 yfinance 누락 시 Naver 일별 시세 fallback
+2. InvestorFlow: Naver 투자자별 매매동향 fallback 우선, 필요 시 pykrx 보조
+3. MarketIndex: yfinance 기반 KOSPI/KOSDAQ/USDKRW/NASDAQ/SP500 수집
+4. RiskEvent: OpenDART 공시 우선, API key 또는 corp_code 누락 시 Naver 공시/뉴스 fallback
+5. FinancialSnapshot: OpenDART 재무제표 기반 최근 2개년 주요 재무 스냅샷 수집
+6. DataQualitySnapshot: 위 입력 데이터 수집 후 `update_data_quality`로 재계산
+```
+
+운영 자동 수집 후보 파일은 `deploy/production/thestock_investor_flow_collect.service`와 `deploy/production/thestock_investor_flow_collect.timer`다. 이름은 초기 수급 수집에서 출발했지만, 현재 서비스 파일은 가격, 시장, 수급, 리스크 이벤트, 재무 스냅샷, 데이터 품질 갱신을 순차 실행하는 decision input 수집 job으로 확장되어 있다.
+
+보유 종목 컨설팅 화면은 `UserHolding.max_additional_budget`를 기준으로 추가 예산을 계산한다. `/consulting/holdings/` 화면의 `추가예산설정` 버튼에서 전체 추가 예산을 입력하면 활성 보유 종목에 균등 배분하고, 개별 종목 금액을 바꾸면 총액과 배정 비중을 다시 계산해 저장한다.
+
 2026-06 기술 아키텍처 보강 기준에서는 일반 사용자 기능의 최종 방향을 사용자별 Toss credential 1:1 구조로 둔다. 전역 `.env` Toss credential은 staff-only 운영 점검 또는 전환 기간에만 제한적으로 유지할 수 있으며, 일반 사용자 데이터 조회에는 사용하지 않는다. `.env` 파일 자체는 삭제하지 않고 `DJANGO_SECRET_KEY`, DB 설정, `CREDENTIAL_ENCRYPTION_KEY`, `CREDENTIAL_HASH_PEPPER`, `SQLCIPHER_DATABASE_KEY` 같은 운영 secret 관리 수단으로 유지한다.
 
 SQLite 환경에서 SQLCipher는 DB 파일 유출 방어용 보조 계층으로 검토한다. Toss credential column 보안의 핵심은 SQLCipher가 아니라 application-level encrypted field이며, SQL query 결과에서도 `client_id`, `client_secret`, token 평문이 보이면 안 된다. 상세 기준은 `docs/54_technical_architecture_and_toss_credential_design.md`를 따른다.
@@ -129,6 +144,10 @@ docs/19_toss_openapi_first_provider_policy.md
 docs/20_toss_openapi_mapping_table.md
 docs/21_toss_openapi_security_checklist.md
 docs/54_technical_architecture_and_toss_credential_design.md
+docs/55_security_foundation_research_report.md
+docs/56_toss_credential_issuance_model_research_report.md
+docs/57_holdings_realized_profit_screen_guide.md
+docs/58_holdings_realized_profit_screen_split_design.md
 docs/api_reference.md
 docs/check-list.txt
 ```

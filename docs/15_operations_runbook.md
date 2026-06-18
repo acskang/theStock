@@ -60,6 +60,21 @@ systemctl status thestock-cloudflared --no-pager
 systemctl status nginx --no-pager
 ```
 
+현재 운영 서버에서 확인된 Django web service 이름은 다음이다.
+
+```bash
+systemctl status gunicorn_thestock.service --no-pager
+systemctl is-active gunicorn_thestock.service
+```
+
+Decision input 자동 수집 후보 unit은 다음 repository 파일과 운영 systemd unit을 대조한다.
+
+```bash
+systemctl status thestock_investor_flow_collect.service --no-pager
+systemctl status thestock_investor_flow_collect.timer --no-pager
+systemctl cat thestock_investor_flow_collect.service
+```
+
 user service인 경우:
 
 ```bash
@@ -372,13 +387,44 @@ client secret을 로그에 출력하지 않는다.
 
 ```text
 1. TossOpenApiProvider
-2. pykrx 또는 KRX 보조 provider
+2. yfinance/Naver/pykrx/KRX 보조 provider
 3. OPENDART provider
-4. 수동 입력 provider
-5. MockDataProvider(local/test)
+4. Naver 공시/뉴스 fallback provider
+5. 수동 입력 provider
+6. MockDataProvider(local/test)
 ```
 
 Toss OpenAPI가 제공하는 데이터는 Toss를 먼저 확인하고, Toss가 제공하지 않거나 장애가 있는 경우에만 fallback provider를 사용한다.
+
+## 7.0 Decision input 자동 수집 현황
+
+2026-06-18 기준 물타기 컨설팅 입력 데이터 수집 job은 다음 순서를 권장한다.
+
+```bash
+python manage.py collect_daily_prices --days 240
+python manage.py collect_market_indices --codes KOSPI KOSDAQ USDKRW NASDAQ SP500 --days 240
+python manage.py collect_investor_flows --days 60
+python manage.py collect_risk_events --days 365
+python manage.py collect_financial_snapshots --years 2
+python manage.py update_data_quality --all-stocks
+```
+
+관련 배포 파일:
+
+```text
+deploy/production/thestock_investor_flow_collect.service
+deploy/production/thestock_investor_flow_collect.timer
+```
+
+주의:
+
+```text
+1. service 이름은 초기 수급 수집에서 출발했지만, 현재 역할은 decision input 통합 수집이다.
+2. `/etc/systemd/system`에 설치된 unit이 repository 파일과 동일한지 확인한다.
+3. OPENDART_API_KEY 값은 출력하지 않고 설정 여부만 확인한다.
+4. 수집 실패 시 기존 DB 데이터를 삭제하지 않는다.
+5. 수집 후 `update_data_quality --all-stocks`를 실행해야 컨설팅 화면 품질 경고가 최신화된다.
+```
 
 ## 7.1 수집 실패 확인
 
