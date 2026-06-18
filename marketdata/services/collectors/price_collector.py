@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 import logging
 
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 
 from holdings.models import UserHolding
 from marketdata.models import DailyPrice
@@ -18,6 +21,9 @@ from marketdata.services.source_resolution import resolve_stock_yfinance_symbol
 from stocks.models import Stock
 
 logger = logging.getLogger(__name__)
+
+NAVER_DAILY_PRICE_URL = "https://finance.naver.com/item/sise_day.naver"
+NAVER_USER_AGENT = "Mozilla/5.0 (compatible; theStock price collector)"
 
 
 @dataclass
@@ -35,6 +41,78 @@ def _get_target_stocks(*, stock_code=None, all_stocks=False):
     if all_stocks:
         return Stock.objects.filter(is_active=True).order_by("code")
     return Stock.objects.filter(holdings__is_active=True).distinct().order_by("code")
+
+
+def _is_krx_stock_code(stock_code: str) -> bool:
+    return len(str(stock_code)) == 6 and str(stock_code).isdigit()
+
+
+def _parse_naver_date(value):
+    return datetime.strptime(str(value).strip().replace(".", "-"), "%Y-%m-%d").date()
+
+
+def _parse_naver_int(value):
+    normalized = str(value or "").replace(",", "").strip()
+    if not normalized:
+        return 0
+    return int(normalized)
+
+
+def _fetch_naver_daily_price_frame(stock_code: str, days: int):
+    rows = []
+    max_pages = max((days // 10) + 3, 3)
+    for page in range(1, max_pages + 1):
+        response = requests.get(
+            NAVER_DAILY_PRICE_URL,
+            params={"code": stock_code, "page": page},
+            headers={"User-Agent": NAVER_USER_AGENT},
+            timeout=10,
+        )
+        response.raise_for_status()
+        response.encoding = "euc-kr"
+        page_rows = _parse_naver_daily_price_rows(response.text)
+        if not page_rows:
+            break
+        rows.extend(page_rows)
+        if len(rows) >= days:
+            break
+    if not rows:
+        return pd.DataFrame()
+    rows = sorted({row["Date"]: row for row in rows}.values(), key=lambda row: row["Date"])
+    return pd.DataFrame(rows[-days:])
+
+
+def _parse_naver_daily_price_rows(html: str):
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.find("table", class_="type2")
+    if table is None:
+        return []
+
+    rows = []
+    for tr in table.find_all("tr"):
+        cells = [cell.get_text(" ", strip=True) for cell in tr.find_all("td")]
+        if len(cells) < 7:
+            continue
+        try:
+            row_date = _parse_naver_date(cells[0])
+            close_price = _parse_naver_int(cells[1])
+            open_price = _parse_naver_int(cells[3])
+            high_price = _parse_naver_int(cells[4])
+            low_price = _parse_naver_int(cells[5])
+            volume = _parse_naver_int(cells[6])
+        except Exception:
+            continue
+        rows.append(
+            {
+                "Date": row_date,
+                "Open": open_price,
+                "High": high_price,
+                "Low": low_price,
+                "Close": close_price,
+                "Volume": volume,
+            }
+        )
+    return rows
 
 
 def _build_price_rows(frame):
@@ -98,6 +176,8 @@ def collect_daily_prices(*, stock_code=None, days=240, all_stocks=False, dry_run
             continue
 
         frame = fetch_history_frame(resolution.symbol, days)
+        if (frame is None or frame.empty) and _is_krx_stock_code(stock.code):
+            frame = _fetch_naver_daily_price_frame(stock.code, days)
         rows = _build_price_rows(frame)
         if not rows:
             report.skipped_targets += 1

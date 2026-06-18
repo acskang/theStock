@@ -1,0 +1,95 @@
+<section id="toss-order-history-panel" class="card">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+      <div>
+        <h3 class="h5 fw-bold mb-1">주문·체결 조회</h3>
+        <p class="text-muted mb-0">
+          OPEN은 진행 중 주문, CLOSED는 종료된 주문입니다. CLOSED 조회만 다음 페이지 이동을 지원합니다.
+        </p>
+      </div>
+      {% if toss_api_calls_enabled %}
+        <span class="badge text-bg-success">read-only orders enabled</span>
+      {% else %}
+        <span class="badge text-bg-secondary">orders disabled</span>
+      {% endif %}
+    </div>
+
+    <div class="alert alert-info" role="alert">
+      이 화면은 주문·체결 내역 조회 전용입니다. 매수·매도·정정·취소 버튼은 제공하지 않습니다.
+    </div>
+
+    {% if order_history_error %}
+      <div class="alert alert-danger" role="alert">{{ order_history_error }}</div>
+    {% endif %}
+    {% if order_history_message %}
+      <div class="alert alert-success" role="alert">{{ order_history_message }}</div>
+    {% endif %}
+
+    {% if not toss_api_calls_enabled %}
+      <div class="alert alert-warning mb-0" role="alert">
+        현재 Toss API 호출 기능이 비활성화되어 주문 내역을 조회할 수 없습니다.
+      </div>
+    {% elif safe_status.status != "active" %}
+      <div class="alert alert-warning mb-0" role="alert">
+        Toss credential 연결 확인을 먼저 완료해 주세요.
+      </div>
+    {% else %}
+      <form method="post" action="{{ orders_url }}"
+            hx-post="{{ orders_url }}"
+            hx-target="#toss-order-history-panel"
+            hx-swap="outerHTML">
+        {% csrf_token %}
+        {% if order_history_form.non_field_errors %}
+          <div class="alert alert-danger" role="alert">{{ order_history_form.non_field_errors }}</div>
+        {% endif %}
+        {{ order_history_form.cursor }}
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-2">
+            <label class="form-label" for="{{ order_history_form.status.id_for_label }}">{{ order_history_form.status.label }}</label>
+            {{ order_history_form.status }}
+            {% for error in order_history_form.status.errors %}
+              <div class="form-text text-danger">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label" for="{{ order_history_form.symbol.id_for_label }}">{{ order_history_form.symbol.label }}</label>
+            {{ order_history_form.symbol }}
+            {% for error in order_history_form.symbol.errors %}
+              <div class="form-text text-danger">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label" for="{{ order_history_form.from_date.id_for_label }}">{{ order_history_form.from_date.label }}</label>
+            {{ order_history_form.from_date }}
+            {% for error in order_history_form.from_date.errors %}
+              <div class="form-text text-danger">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label" for="{{ order_history_form.to_date.id_for_label }}">{{ order_history_form.to_date.label }}</label>
+            {{ order_history_form.to_date }}
+            {% for error in order_history_form.to_date.errors %}
+              <div class="form-text text-danger">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label" for="{{ order_history_form.limit.id_for_label }}">{{ order_history_form.limit.label }}</label>
+            {{ order_history_form.limit }}
+            {% for error in order_history_form.limit.errors %}
+              <div class="form-text text-danger">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-12 col-md-2">
+            <button type="submit" class="btn btn-dark w-100">조회</button>
+          </div>
+        </div>
+      </form>
+    {% endif %}
+
+    {% if order_history_page %}
+      <div class="mt-4">
+        {% include "integrations/partials/toss_order_history_result.html" %}
+      </div>
+    {% endif %}
+  </div>
+</section>

@@ -26,6 +26,8 @@
 [ ] secret rotation 절차를 운영 Runbook에 연결한다.
 ```
 
+기존 전역 `.env` Toss credential은 staff-only 운영 점검 또는 transition 용도에 한해 제한적으로 유지할 수 있다. 일반 사용자 기능에서는 전역 `TOSS_INVEST_CLIENT_ID`, `TOSS_INVEST_CLIENT_SECRET`, `TOSS_INVEST_ACCOUNT_ID`를 공유 credential로 사용하지 않는다.
+
 허용되는 예:
 
 ```env
@@ -34,6 +36,37 @@ TOSS_INVEST_CLIENT_SECRET=
 TOSS_INVEST_BASE_URL=
 TOSS_INVEST_TOKEN_URL=
 TOSS_ORDER_EXECUTION_ENABLED=false
+```
+
+사용자별 credential 구조 추가 체크:
+
+```text
+[ ] 사용자별 Toss client_id/client_secret은 평문 DB 저장 금지.
+[ ] encrypted field ciphertext 저장을 확인한다.
+[ ] SQL query로 client_id/client_secret/token 평문이 조회되지 않는지 확인한다.
+[ ] CREDENTIAL_ENCRYPTION_KEY는 DB에 저장하지 않는다.
+[ ] CREDENTIAL_HASH_PEPPER는 DB에 저장하지 않는다.
+[ ] SQLCIPHER_DATABASE_KEY는 SQLite DB file encryption 용도이며 credential column encryption 대체재가 아니다.
+[ ] SQLCipher만으로 credential 보안 충분하다고 판단하지 않는다.
+[ ] Django admin에서 secret 평문 표시 금지.
+[ ] credential reveal은 본인 재인증과 audit log가 필요하다.
+[ ] AG Grid/D3/LLM 화면/API에 민감정보 원문 전달 금지.
+```
+
+## 1.1 Phase 1 security foundation 조사 반영
+
+상세 조사 보고서는 `docs/55_security_foundation_research_report.md`를 기준으로 한다.
+
+요약:
+
+```text
+[ ] 1차 encrypted credential 저장은 cryptography.Fernet/MultiFernet 기반 service-layer encryption을 우선한다.
+[ ] 일반 TextField에는 ciphertext만 저장하고 decrypt는 service 함수에서만 수행한다.
+[ ] SQLCipher는 SQLite DB 파일 보호 계층이며 credential column encryption 대체재가 아니다.
+[ ] SQLCipher는 1차 credential 구현 blocker가 아니라 별도 hardening phase에서 검증한다.
+[ ] staff/admin/superuser는 사용자 secret/token 평문 reveal 금지.
+[ ] access_token/refresh_token은 사용자 본인에게도 화면 reveal 금지.
+[ ] 복호화 실패, key mismatch, 손망실, 분실 문의는 reset_required + 초기화 후 사용자 재등록으로 처리한다.
 ```
 
 ---
@@ -140,15 +173,18 @@ git grep -n "Authorization: Bearer"
 git grep -n "X-Tossinvest-Account"
 git grep -n "access_token"
 git grep -n "client_secret"
+git grep -n "CREDENTIAL_ENCRYPTION_KEY"
+git grep -n "CREDENTIAL_HASH_PEPPER"
+git grep -n "SQLCIPHER_DATABASE_KEY"
 ```
 
 Git repo가 아닌 문서 작업 디렉터리에서는 다음을 사용한다.
 
 ```bash
-rg -n "TOSS_INVEST_CLIENT_SECRET|Authorization: Bearer|X-Tossinvest-Account|access_token|client_secret" .
+rg -n "TOSS_INVEST_CLIENT_SECRET|Authorization: Bearer|X-Tossinvest-Account|access_token|client_secret|CREDENTIAL_ENCRYPTION_KEY|CREDENTIAL_HASH_PEPPER|SQLCIPHER_DATABASE_KEY" .
 ```
 
-검색 결과에 실제 secret 값이 있으면 즉시 폐기/재발급 절차를 따른다.
+검색 결과에 실제 secret 값이 있으면 즉시 폐기/재발급 절차를 따른다. 변수명만 존재하는 것은 허용되지만, 실제 값은 출력하거나 보고서에 붙여 넣지 않는다.
 
 ---
 
@@ -229,6 +265,16 @@ API key 또는 계좌 식별자 노출이 의심되면 다음 순서로 대응�
 6. Git history와 로그 저장소를 확인한다.
 7. 의심 API 호출 기록을 확인한다.
 8. 사고 기록을 남기고 재발 방지 작업을 등록한다.
+```
+
+사용자별 Toss credential 사고 대응:
+
+```text
+1. 특정 사용자 credential leak 의심 시 해당 credential을 revoke/delete 처리한다.
+2. CREDENTIAL_ENCRYPTION_KEY leak 의심 시 전체 사용자 credential 사고로 격상한다.
+3. SQLCIPHER_DATABASE_KEY leak은 DB 파일 유출 방어 계층 사고로 분류하되, credential encryption key와 별도로 대응한다.
+4. audit log에서 reveal/access/token refresh/조회 이벤트를 확인한다.
+5. key rotation과 credential 재등록 절차를 별도 incident task로 등록한다.
 ```
 
 ---

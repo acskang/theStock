@@ -1,0 +1,25 @@
+{% if local_search_results %}
+  <div class="table-responsive mt-3">
+    <table class="table table-sm align-middle mb-0">
+      <thead><tr><th>종목명</th><th>시장</th><th>상세</th></tr></thead>
+      <tbody>
+        {% for stock in local_search_results %}
+          <tr>
+            <td class="fw-semibold">{{ stock.name }}</td>
+            <td>{{ stock.market }}</td>
+            <td>
+              <form method="post" action="{{ detail_url }}" hx-post="{{ detail_url }}" hx-target="#toss-market-symbol-detail" hx-swap="outerHTML">
+                {% csrf_token %}
+                <input type="hidden" name="symbol" value="{{ stock.code }}">
+                <input type="hidden" name="trades_count" value="20">
+                <button type="submit" class="btn btn-outline-dark btn-sm">상세 시세 조회</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% elif local_search_form.is_bound and not local_search_error %}
+  <div class="alert alert-info mt-3 mb-0">검색된 Stock master 종목이 없습니다.</div>
+{% endif %}

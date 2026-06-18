@@ -282,3 +282,23 @@ This is the safest path that increases product value, uses the verified Toss
 integration, improves analysis data coverage, and preserves the current
 no-order/no-automation safety posture.
 
+## 13. Architecture Re-prioritization Note
+
+기존 Step 22 DailyPrice batch ingestion dry-run 우선순위는 데이터 품질 관점에서 여전히 유효하다. 이 문서의 기존 판단은 삭제하지 않는다.
+
+다만 일반 사용자 Toss 연동 서비스로 확장하려면 user-account/credential ownership 문제가 선행되어야 한다. 따라서 다음 큰 아키텍처 작업은 `docs/54_technical_architecture_and_toss_credential_design.md` 기준 사용자별 Toss credential 보안 기반 설계/검증이다.
+
+정리:
+
+- DailyPrice batch 작업은 credential architecture와 충돌하지 않는다.
+- DailyPrice batch는 병행 또는 후속으로 재검토 가능하다.
+- 일반 사용자 holdings/order history/portfolio 자동 연결은 사용자별 Toss credential 1:1 구조 이후에 진행한다.
+- 전역 `TOSS_INVEST_CLIENT_ID`, `TOSS_INVEST_CLIENT_SECRET`, `TOSS_INVEST_ACCOUNT_ID`는 일반 사용자 데이터 조회에 사용하지 않는다.
+- 주문 API/자동매매/매수매도 추천 실행은 계속 제외한다.
+
+새 architecture 선행 검증 후보:
+
+1. application-level encrypted field 후보 조사.
+2. SQLCipher와 Django 5.x 적용 가능성 조사.
+3. `CREDENTIAL_ENCRYPTION_KEY`, `CREDENTIAL_HASH_PEPPER`, `SQLCIPHER_DATABASE_KEY` 운영 정책 설계.
+4. Toss `client_id`/`client_secret`이 사용자 개인별 credential인지 서비스 앱 단위 credential인지 확인.

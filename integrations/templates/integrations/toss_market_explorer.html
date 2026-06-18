@@ -1,0 +1,38 @@
+{% extends "portfolio/base.html" %}
+
+{% block title %}시장 시세·종목 탐색 | theStock{% endblock %}
+{% block page_title %}시장 시세·종목 탐색{% endblock %}
+
+{% block content %}
+  <div class="container-fluid px-0">
+    <div class="mb-4">
+      <p class="text-uppercase text-muted fw-bold small mb-2">Market Data</p>
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <h2 class="h3 fw-bold mb-2">시장 시세·종목 탐색</h2>
+          <p class="text-muted mb-0">로컬 Stock master와 Toss 시장 데이터 API를 조회 전용으로 탐색합니다.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-outline-dark btn-sm" href="{{ dashboard_url }}">Toss 통합 대시보드</a>
+          <a class="btn btn-outline-dark btn-sm" href="{{ settings_url }}">Credential 설정</a>
+          <a class="btn btn-outline-dark btn-sm" href="{{ orders_url }}">주문·체결 내역</a>
+          <a class="btn btn-outline-dark btn-sm" href="{{ trading_info_url }}">거래 가능 정보</a>
+          <a class="btn btn-outline-dark btn-sm" href="{{ portfolio_summary_url }}">포트폴리오 요약</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-warning" role="alert">
+      현재가·호가·체결·캔들 데이터는 버튼을 눌렀을 때 조회합니다. 이 화면은 조회 전용이며 주문 실행 기능은 없습니다.
+      실시간 웹소켓이 아니라 조회 시점의 API 응답을 표시합니다.
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12">{% include "integrations/partials/toss_market_local_search.html" %}</div>
+      <div class="col-12">{% include "integrations/partials/toss_market_quotes_panel.html" %}</div>
+      <div class="col-12">{% include "integrations/partials/toss_market_symbol_detail_panel.html" %}</div>
+      <div class="col-12">{% include "integrations/partials/toss_market_candles_panel.html" %}</div>
+      <div class="col-12">{% include "integrations/partials/toss_market_exchange_rate.html" %}</div>
+    </div>
+  </div>
+{% endblock %}

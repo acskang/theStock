@@ -1,8 +1,9 @@
 import csv
 import json
 import re
+from datetime import datetime
 from urllib.parse import urlencode
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from statistics import mean
 
@@ -15,9 +16,12 @@ from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.dateparse import parse_date
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
+from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_POST
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -25,6 +29,7 @@ from rest_framework.views import APIView
 from data_pipeline.models import DataIngestionLog, DataProviderStatus, DataQualitySnapshot
 from holdings.models import UserHolding
 from data_pipeline.services.summary_service import build_data_pipeline_summary
+from holdings.services.stock_resolution_service import resolve_stock_from_legacy_name
 from holdings.services.sync_service import sync_all_holdings_for_legacy_user
 from marketdata.models import StockDataCollectionStatus
 from marketdata.services.collection_status_service import get_collection_status_snapshot
@@ -969,6 +974,19 @@ def _build_holding_consult_summary(holding):
     }
 
 
+def _parse_budget_amount(value):
+    cleaned = str(value or "").replace(",", "").strip()
+    if cleaned == "":
+        return Decimal("0.00")
+    try:
+        amount = Decimal(cleaned)
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError("추가 예산은 숫자로 입력해 주세요.") from exc
+    if amount < 0:
+        raise ValueError("추가 예산은 0원 이상으로 입력해 주세요.")
+    return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
 def landing_page(request):
     return render(request, "portfolio/landing.html")
 
@@ -1182,73 +1200,479 @@ def price_board(request):
     })
 
 
-def analysis_view(request):
-    seed_default_symbols()
-    holdings = build_holdings_analysis()
+HOLDING_STATUS_OPTIONS = [
+    ("all", "전체"),
+    ("profit", "수익"),
+    ("loss", "손실"),
+    ("price_error", "가격 오류"),
+]
+
+HOLDING_SORT_OPTIONS = [
+    ("name", "종목명"),
+    ("profit_loss_desc", "평가손익 높은순"),
+    ("profit_loss_asc", "평가손익 낮은순"),
+    ("return_desc", "수익률 높은순"),
+    ("return_asc", "수익률 낮은순"),
+]
+
+REALIZED_RESULT_OPTIONS = [
+    ("all", "전체"),
+    ("profit", "수익"),
+    ("loss", "손실"),
+    ("warning", "경고"),
+]
+
+BUY_REVIEW_MIN_COMPLETED_OPTIONS = ["0", "3", "5", "10"]
+
+
+def _analysis_base_context(active_tab: str) -> dict:
+    return {
+        "analysis_active_tab": active_tab,
+        "analysis_nav_items": [
+            ("profit_loss_dashboard", "손익 개요"),
+            ("holdings_valuation", "보유 평가"),
+            ("realized_profit", "실현손익"),
+            ("buy_review", "매수 회고"),
+            ("buy_review_ranking", "회고 랭킹"),
+        ],
+    }
+
+
+def _safe_number(value, default=0):
+    return value if value is not None else default
+
+
+def _analysis_tone(value):
+    try:
+        number = Decimal(str(value or 0))
+    except Exception:
+        number = Decimal("0")
+    if number > 0:
+        return "text-success"
+    if number < 0:
+        return "text-danger"
+    return "text-secondary"
+
+
+def _analysis_result_label(value):
+    try:
+        number = Decimal(str(value or 0))
+    except Exception:
+        number = Decimal("0")
+    if number > 0:
+        return "수익"
+    if number < 0:
+        return "손실"
+    return "중립"
+
+
+def _decorate_holdings_rows(rows):
+    decorated = []
+    for row in rows:
+        decorated.append(
+            {
+                **row,
+                "tone_class": _analysis_tone(row.get("profit")),
+                "result_label": _analysis_result_label(row.get("profit")),
+                "price_status": row.get("price_error") or "정상",
+            }
+        )
+    return decorated
+
+
+def _filter_sort_holdings(rows, *, status: str, sort: str):
+    allowed_status = {value for value, _label in HOLDING_STATUS_OPTIONS}
+    allowed_sort = {value for value, _label in HOLDING_SORT_OPTIONS}
+    effective_status = status if status in allowed_status else "all"
+    effective_sort = sort if sort in allowed_sort else "profit_loss_asc"
+    filtered = list(rows)
+    if effective_status == "profit":
+        filtered = [row for row in filtered if row.get("profit", 0) > 0]
+    elif effective_status == "loss":
+        filtered = [row for row in filtered if row.get("profit", 0) < 0]
+    elif effective_status == "price_error":
+        filtered = [row for row in filtered if row.get("price_error")]
+
+    sorters = {
+        "name": lambda row: (row.get("stock_name") or ""),
+        "profit_loss_desc": lambda row: -_safe_number(row.get("profit")),
+        "profit_loss_asc": lambda row: _safe_number(row.get("profit")),
+        "return_desc": lambda row: -_safe_number(row.get("profit_rate")),
+        "return_asc": lambda row: _safe_number(row.get("profit_rate")),
+    }
+    return sorted(filtered, key=sorters[effective_sort]), effective_status, effective_sort
+
+
+def _build_holdings_summary(rows):
+    book_value = sum(_safe_number(row.get("book_value")) for row in rows)
+    market_value = sum(_safe_number(row.get("market_value")) for row in rows)
+    profit = sum(_safe_number(row.get("profit")) for row in rows)
+    profit_rate = round((profit / book_value) * 100, 2) if book_value else 0
+    return {
+        "count": len(rows),
+        "book_value": book_value,
+        "market_value": market_value,
+        "profit": profit,
+        "profit_rate": profit_rate,
+        "profit_count": sum(1 for row in rows if row.get("profit", 0) > 0),
+        "loss_count": sum(1 for row in rows if row.get("profit", 0) < 0),
+        "price_error_count": sum(1 for row in rows if row.get("price_error")),
+        "tone_class": _analysis_tone(profit),
+    }
+
+
+def _date_from_sold_at(value):
+    return parse_date(str(value or "")[:10])
+
+
+def _filter_realized_rows(rows, *, date_from, date_to, stock, result):
+    effective_result = result if result in {value for value, _label in REALIZED_RESULT_OPTIONS} else "all"
+    filtered = list(rows)
+    if date_from:
+        filtered = [row for row in filtered if _date_from_sold_at(row.sold_at) and _date_from_sold_at(row.sold_at) >= date_from]
+    if date_to:
+        filtered = [row for row in filtered if _date_from_sold_at(row.sold_at) and _date_from_sold_at(row.sold_at) <= date_to]
+    if stock:
+        stock_query = stock.strip().lower()
+        filtered = [row for row in filtered if stock_query in row.stock_name.lower()]
+    if effective_result == "profit":
+        filtered = [row for row in filtered if row.profit > 0]
+    elif effective_result == "loss":
+        filtered = [row for row in filtered if row.profit < 0]
+    elif effective_result == "warning":
+        filtered = [row for row in filtered if row.note]
+    return filtered, effective_result
+
+
+def _build_realized_from_rows(rows, warnings=None):
+    summary = {}
+    for row in rows:
+        item = summary.setdefault(
+            row.stock_name,
+            {"stock_name": row.stock_name, "sold_qty": 0, "proceeds": 0, "cost": 0, "profit": 0, "sell_count": 0},
+        )
+        item["sold_qty"] += row.sold_qty
+        item["proceeds"] += row.proceeds
+        item["cost"] += row.cost
+        item["profit"] += row.profit
+        item["sell_count"] += 1
+    summary_rows = []
+    for item in sorted(summary.values(), key=lambda row: (-row["profit"], row["stock_name"])):
+        item["profit_rate"] = round((item["profit"] / item["cost"]) * 100, 2) if item["cost"] else 0
+        item["tone_class"] = _analysis_tone(item["profit"])
+        item["result_label"] = _analysis_result_label(item["profit"])
+        summary_rows.append(item)
+    total_cost = sum(row["cost"] for row in summary_rows)
+    total_profit = sum(row["profit"] for row in summary_rows)
+    total = {
+        "sold_qty": sum(row["sold_qty"] for row in summary_rows),
+        "proceeds": sum(row["proceeds"] for row in summary_rows),
+        "cost": total_cost,
+        "profit": total_profit,
+        "profit_rate": round((total_profit / total_cost) * 100, 2) if total_cost else 0,
+        "tone_class": _analysis_tone(total_profit),
+        "profit_stock_count": sum(1 for row in summary_rows if row["profit"] > 0),
+        "loss_stock_count": sum(1 for row in summary_rows if row["profit"] < 0),
+        "warning_count": len(warnings or []) + sum(1 for row in rows if row.note),
+    }
+    return {"rows": rows, "summary_rows": summary_rows, "total": total, "warnings": warnings or []}
+
+
+def _build_realized_context(request):
     realized = build_realized_profit_analysis()
+    date_from = parse_date(request.GET.get("date_from", "").strip())
+    date_to = parse_date(request.GET.get("date_to", "").strip())
+    stock = request.GET.get("stock", "").strip()
+    filtered_rows, selected_result = _filter_realized_rows(
+        realized["rows"],
+        date_from=date_from,
+        date_to=date_to,
+        stock=stock,
+        result=request.GET.get("result", "all").strip(),
+    )
+    filtered = _build_realized_from_rows(filtered_rows, warnings=realized.get("warnings", []))
+    csv_params = {}
+    for key in ("date_from", "date_to", "stock", "result"):
+        value = request.GET.get(key, "").strip()
+        if value:
+            csv_params[key] = value
+    csv_params["export"] = "csv"
+    return {
+        "realized": filtered,
+        "date_from": request.GET.get("date_from", "").strip(),
+        "date_to": request.GET.get("date_to", "").strip(),
+        "stock_filter": stock,
+        "selected_result": selected_result,
+        "realized_result_options": REALIZED_RESULT_OPTIONS,
+        "realized_csv_url": f"{reverse('realized_profit')}?{urlencode(csv_params)}",
+    }
+
+
+def _export_realized_profit_csv(realized):
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="realized_profit.csv"'
+    response.write("\ufeff")
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            "매도시각",
+            "종목명",
+            "종목코드",
+            "매도수량",
+            "매도가",
+            "평균매수가",
+            "매도금액",
+            "매도원가",
+            "실현손익",
+            "수익률",
+            "비고/경고",
+        ]
+    )
+    stock_code_cache = {}
+    for row in realized["rows"]:
+        if row.stock_name not in stock_code_cache:
+            resolution = resolve_stock_from_legacy_name(row.stock_name)
+            stock_code_cache[row.stock_name] = resolution.stock.code if resolution.stock else ""
+        writer.writerow(
+            [
+                row.sold_at,
+                row.stock_name,
+                stock_code_cache[row.stock_name],
+                row.sold_qty,
+                row.sell_price,
+                row.avg_buy_price,
+                row.proceeds,
+                row.cost,
+                row.profit,
+                row.profit_rate,
+                row.note,
+            ]
+        )
+    return response
+
+
+def _review_stock_key(stock_name: str) -> str:
+    resolution = resolve_stock_from_legacy_name(stock_name)
+    return resolution.stock.code if resolution.stock else stock_name
+
+
+def _review_stock_choices():
+    names = sorted(set(Transaction.objects.values_list("stock_name", flat=True)))
+    return [{"name": name, "key": _review_stock_key(name)} for name in names]
+
+
+def _resolve_review_stock_name(stock_code: str) -> str:
+    clean = str(stock_code or "").strip()
+    if not clean:
+        raise Http404("Review stock not found.")
+    stock = Stock.objects.filter(code__iexact=clean).first()
+    if stock and Transaction.objects.filter(stock_name=stock.name).exists():
+        return stock.name
+    if Transaction.objects.filter(stock_name=clean).exists():
+        return clean
+    raise Http404("Review stock not found.")
+
+
+def _ranking_sort_from_request(value):
+    mapping = {
+        "average_score": "score",
+        "average_20d_return": "return_20",
+        "completed_count": "completed_count",
+    }
+    return mapping.get(value, value or "score")
+
+
+def _ranking_sort_to_query(value):
+    reverse_mapping = {
+        "score": "average_score",
+        "return_20": "average_20d_return",
+    }
+    return reverse_mapping.get(value, value)
+
+
+def _build_rankings_context(request):
     stock_names = sorted(set(Transaction.objects.values_list("stock_name", flat=True)))
-    requested_stock_name = request.GET.get("stock_name", "").strip()
-    if requested_stock_name in stock_names:
-        selected_stock_name = requested_stock_name
-    elif stock_names:
-        selected_stock_name = stock_names[0]
+    rankings = build_historical_buy_timing_rankings(stock_names)
+    requested_sort = _ranking_sort_from_request(request.GET.get("sort", request.GET.get("ranking_sort", "average_score")).strip())
+    min_completed = request.GET.get("min_completed", "0").strip()
+    if min_completed not in BUY_REVIEW_MIN_COMPLETED_OPTIONS:
+        min_completed = "0"
+    min_completed_int = int(min_completed)
+    rankings = [row for row in rankings if row["scored_buy_count"] >= min_completed_int]
+    if requested_sort == "completed_count":
+        rankings = sorted(rankings, key=lambda row: (-row["scored_buy_count"], row["stock_name"]))
+        selected_sort = "completed_count"
     else:
-        selected_stock_name = ""
-    retrospective = (
-        build_historical_buy_timing_analysis(selected_stock_name)
-        if selected_stock_name
-        else None
-    )
-    retrospective_rankings = build_historical_buy_timing_rankings(stock_names)
-    selected_ranking_sort = request.GET.get("ranking_sort", "score").strip() or "score"
-    retrospective_rankings, selected_ranking_sort = _sort_retrospective_rankings(
-        retrospective_rankings,
-        selected_ranking_sort,
-    )
-    score_rankings, _score_sort = _sort_retrospective_rankings(list(retrospective_rankings), "score")
-    ranking_leader_names = _build_retrospective_ranking_leader_names(retrospective_rankings)
-    current_sort_top_name = retrospective_rankings[0]["stock_name"] if retrospective_rankings else ""
-    score_top_name = score_rankings[0]["stock_name"] if score_rankings else ranking_leader_names.get("score_top", "")
-    for row in retrospective_rankings:
-        row["is_selected"] = row["stock_name"] == selected_stock_name
-        row["is_current_sort_top"] = row["stock_name"] == current_sort_top_name
-        row["is_score_top"] = row["stock_name"] == score_top_name
-        row["is_consistency_top"] = row["stock_name"] == ranking_leader_names.get("consistency_top", "")
-        row["is_good_ratio_top"] = row["stock_name"] == ranking_leader_names.get("good_ratio_top", "")
-        row["is_return_20_top"] = row["stock_name"] == ranking_leader_names.get("return_20_top", "")
-        row["is_recovery_top"] = row["stock_name"] == ranking_leader_names.get("recovery_top", "")
-        row["is_trough_top"] = row["stock_name"] == ranking_leader_names.get("trough_top", "")
-    retrospective_ranking_highlights = _build_retrospective_ranking_highlights(retrospective_rankings)
-    retrospective_ranking_comparison = _build_retrospective_ranking_comparison(
-        retrospective_rankings,
-        selected_ranking_sort,
-    )
-    selected_evaluation_filter = request.GET.get("evaluation_filter", "all").strip() or "all"
+        rankings, selected_sort = _sort_retrospective_rankings(rankings, requested_sort)
+    leader_names = _build_retrospective_ranking_leader_names(rankings)
+    current_top_name = rankings[0]["stock_name"] if rankings else ""
+    for row in rankings:
+        row["review_key"] = row["stock_code"] or _review_stock_key(row["stock_name"])
+        row["is_current_sort_top"] = row["stock_name"] == current_top_name
+        row["is_consistency_top"] = row["stock_name"] == leader_names.get("consistency_top", "")
+        row["is_sample_low"] = row["scored_buy_count"] < 3
+    return {
+        "retrospective_rankings": rankings,
+        "selected_ranking_sort": selected_sort,
+        "selected_ranking_sort_query": _ranking_sort_to_query(selected_sort),
+        "selected_min_completed": min_completed,
+        "min_completed_options": BUY_REVIEW_MIN_COMPLETED_OPTIONS,
+        "ranking_sort_options": [
+            ("average_score", "평균 회고 점수"),
+            ("consistency", "실행 일관성"),
+            ("good_ratio", "좋은 매수 비율"),
+            ("average_20d_return", "평균 20일 성과"),
+            ("completed_count", "평가 완료 건수"),
+        ],
+    }
+
+
+@login_required
+def profit_loss_dashboard(request):
+    seed_default_symbols()
     export_type = request.GET.get("export", "").strip()
-    if retrospective:
-        retrospective = _apply_retrospective_filter(retrospective, selected_evaluation_filter)
-    if export_type == "retrospective_rankings_csv" and retrospective_rankings:
-        return _export_retrospective_rankings_csv(retrospective_rankings, selected_ranking_sort)
-    if export_type == "retrospective_details_csv" and retrospective:
-        return _export_retrospective_details_csv(retrospective, selected_evaluation_filter)
+    if export_type == "retrospective_rankings_csv":
+        ranking_context = _build_rankings_context(request)
+        return _export_retrospective_rankings_csv(
+            ranking_context["retrospective_rankings"],
+            ranking_context["selected_ranking_sort"],
+        )
+    if export_type == "retrospective_details_csv":
+        requested_stock_name = request.GET.get("stock_name", "").strip()
+        if requested_stock_name:
+            retrospective = build_historical_buy_timing_analysis(requested_stock_name)
+            selected_filter = request.GET.get("evaluation_filter", "all").strip() or "all"
+            return _export_retrospective_details_csv(_apply_retrospective_filter(retrospective, selected_filter), selected_filter)
+    legacy_stock_param = request.GET.get("stock_name") or request.GET.get("stock")
+    if legacy_stock_param:
+        key = _review_stock_key(legacy_stock_param.strip())
+        return redirect("buy_review_detail", stock_code=key)
+
+    holdings = _decorate_holdings_rows(build_holdings_analysis())
+    holdings_summary = _build_holdings_summary(holdings)
+    realized_source = build_realized_profit_analysis()
+    realized = _build_realized_from_rows(realized_source["rows"], warnings=realized_source.get("warnings", []))
+    top_holding_gains = sorted([row for row in holdings if row.get("profit", 0) > 0], key=lambda row: -row["profit"])[:5]
+    top_holding_losses = sorted([row for row in holdings if row.get("profit", 0) < 0], key=lambda row: row["profit"])[:5]
+    top_realized_gains = [row for row in realized["summary_rows"] if row["profit"] > 0][:5]
+    top_realized_losses = sorted([row for row in realized["summary_rows"] if row["profit"] < 0], key=lambda row: row["profit"])[:5]
     return render(
         request,
-        'portfolio/analysis.html',
+        "portfolio/analysis/dashboard.html",
         {
-            'holdings': holdings,
-            'realized': realized,
-            'analysis_stock_names': stock_names,
-            'selected_stock_name': selected_stock_name,
-            'selected_evaluation_filter': selected_evaluation_filter,
-            'selected_ranking_sort': selected_ranking_sort,
-            'retrospective_filter_options': RETROSPECTIVE_FILTER_OPTIONS,
-            'retrospective_ranking_sort_options': RETROSPECTIVE_RANKING_SORT_OPTIONS,
-            'retrospective': retrospective,
-            'retrospective_rankings': retrospective_rankings,
-            'retrospective_ranking_highlights': retrospective_ranking_highlights,
-            'retrospective_ranking_comparison': retrospective_ranking_comparison,
+            **_analysis_base_context("dashboard"),
+            "holdings_summary": holdings_summary,
+            "realized": realized,
+            "top_holding_gains": top_holding_gains,
+            "top_holding_losses": top_holding_losses,
+            "top_realized_gains": top_realized_gains,
+            "top_realized_losses": top_realized_losses,
+            "generated_at": datetime.now(),
+            "has_transactions": Transaction.objects.exists(),
         },
     )
+
+
+@login_required
+def holdings_valuation(request):
+    seed_default_symbols()
+    rows = _decorate_holdings_rows(build_holdings_analysis())
+    filtered_rows, selected_status, selected_sort = _filter_sort_holdings(
+        rows,
+        status=request.GET.get("status", "all").strip(),
+        sort=request.GET.get("sort", "profit_loss_asc").strip(),
+    )
+    return render(
+        request,
+        "portfolio/analysis/holdings.html",
+        {
+            **_analysis_base_context("holdings"),
+            "holdings": filtered_rows,
+            "holdings_summary": _build_holdings_summary(rows),
+            "selected_status": selected_status,
+            "selected_sort": selected_sort,
+            "holding_status_options": HOLDING_STATUS_OPTIONS,
+            "holding_sort_options": HOLDING_SORT_OPTIONS,
+            "generated_at": datetime.now(),
+        },
+    )
+
+
+@login_required
+def realized_profit(request):
+    context = _build_realized_context(request)
+    if request.GET.get("export") == "csv":
+        return _export_realized_profit_csv(context["realized"])
+    return render(
+        request,
+        "portfolio/analysis/realized.html",
+        {
+            **_analysis_base_context("realized"),
+            **context,
+        },
+    )
+
+
+@login_required
+def buy_review(request):
+    stock_code = request.GET.get("stock_code", request.GET.get("stock", "")).strip()
+    if stock_code:
+        return redirect("buy_review_detail", stock_code=stock_code)
+    return render(
+        request,
+        "portfolio/analysis/buy_review.html",
+        {
+            **_analysis_base_context("buy_review"),
+            "stock_choices": _review_stock_choices(),
+            "retrospective_filter_options": RETROSPECTIVE_FILTER_OPTIONS,
+        },
+    )
+
+
+@login_required
+def buy_review_ranking(request):
+    context = _build_rankings_context(request)
+    if request.GET.get("export") == "retrospective_rankings_csv":
+        return _export_retrospective_rankings_csv(
+            context["retrospective_rankings"],
+            context["selected_ranking_sort"],
+        )
+    return render(
+        request,
+        "portfolio/analysis/buy_review_ranking.html",
+        {
+            **_analysis_base_context("ranking"),
+            **context,
+        },
+    )
+
+
+@login_required
+def buy_review_detail(request, stock_code):
+    stock_name = _resolve_review_stock_name(stock_code)
+    selected_filter = request.GET.get("verdict", request.GET.get("evaluation_filter", "all")).strip() or "all"
+    verdict_map = {"normal": "neutral", "poor": "bad"}
+    selected_filter = verdict_map.get(selected_filter, selected_filter)
+    retrospective = _apply_retrospective_filter(
+        build_historical_buy_timing_analysis(stock_name),
+        selected_filter,
+    )
+    if request.GET.get("export") == "retrospective_details_csv":
+        return _export_retrospective_details_csv(retrospective, retrospective["selected_filter"])
+    return render(
+        request,
+        "portfolio/analysis/buy_review_detail.html",
+        {
+            **_analysis_base_context("buy_review"),
+            "retrospective": retrospective,
+            "stock_code": retrospective.get("stock_code") or stock_code,
+            "retrospective_filter_options": RETROSPECTIVE_FILTER_OPTIONS,
+        },
+    )
+
+
+def analysis_view(request):
+    return profit_loss_dashboard(request)
 
 
 @login_required
@@ -1267,14 +1691,53 @@ def consulting_holding_list(request):
         else:
             inactive_holdings.append(summary)
 
+    total_additional_budget = sum(
+        (item["holding"].max_additional_budget or Decimal("0"))
+        for item in active_holdings
+    )
+
     return render(
         request,
         "portfolio/holding_list.html",
         {
             "active_holdings": active_holdings,
             "inactive_holdings": inactive_holdings,
+            "total_additional_budget": total_additional_budget,
+            "total_additional_budget_display": _format_currency(total_additional_budget),
         },
     )
+
+
+@login_required
+@require_POST
+def consulting_holding_budget_update(request):
+    holdings = list(
+        UserHolding.objects.filter(user=request.user, is_active=True, quantity__gt=0)
+        .select_related("stock")
+        .order_by("-updated_at", "-id")
+    )
+    if not holdings:
+        messages.error(request, "추가 예산을 설정할 활성 보유 종목이 없습니다.")
+        return redirect("consulting_holding_list")
+
+    updates = []
+    try:
+        for holding in holdings:
+            amount = _parse_budget_amount(request.POST.get(f"holding_budget_{holding.id}", "0"))
+            updates.append((holding, amount))
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("consulting_holding_list")
+
+    with transaction.atomic():
+        for holding, amount in updates:
+            if holding.max_additional_budget != amount:
+                holding.max_additional_budget = amount
+                holding.save(update_fields=["max_additional_budget", "updated_at"])
+
+    total_budget = sum(amount for _holding, amount in updates)
+    messages.success(request, f"추가 예산 { _format_currency(total_budget) }을 보유 종목 {len(updates)}개에 저장했습니다.")
+    return redirect("consulting_holding_list")
 
 
 @login_required
@@ -1291,6 +1754,7 @@ def holding_consult_page(request, pk):
         "consultUrl": reverse("holding-consult", kwargs={"pk": holding.id}),
         "consultHistoryUrl": reverse("holding-consults", kwargs={"pk": holding.id}),
         "holdingsListUrl": reverse("consulting_holding_list"),
+        "csrfToken": get_token(request),
     }
     return render(
         request,

@@ -1,0 +1,30 @@
+<section id="toss-market-symbol-detail" class="card">
+  <div class="card-body">
+    <h3 class="h5 fw-bold mb-1">단일 종목 상세 시세</h3>
+    <p class="text-muted">기본정보, 유의사항, 상·하한가, 호가, 최근 체결을 조회합니다.</p>
+    {% if detail_error %}<div class="alert alert-danger">{{ detail_error }}</div>{% endif %}
+    {% if detail_message %}<div class="alert alert-success">{{ detail_message }}</div>{% endif %}
+    {% if not toss_api_calls_enabled %}
+      <div class="alert alert-warning mb-0">현재 Toss API 조회 기능이 비활성화되어 있습니다.</div>
+    {% elif safe_status.status != "active" %}
+      <div class="alert alert-warning mb-0">Toss credential 연결 확인을 먼저 완료해 주세요.</div>
+    {% else %}
+      <form method="post" action="{{ detail_url }}" hx-post="{{ detail_url }}" hx-target="#toss-market-symbol-detail" hx-swap="outerHTML">
+        {% csrf_token %}
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-5">
+            <label class="form-label" for="{{ detail_form.symbol.id_for_label }}">{{ detail_form.symbol.label }}</label>
+            {{ detail_form.symbol }}
+            {% for error in detail_form.symbol.errors %}<div class="form-text text-danger">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label" for="{{ detail_form.trades_count.id_for_label }}">{{ detail_form.trades_count.label }}</label>
+            {{ detail_form.trades_count }}
+          </div>
+          <div class="col-12 col-md-4"><button type="submit" class="btn btn-dark w-100">상세 시세 조회</button></div>
+        </div>
+      </form>
+    {% endif %}
+    {% if symbol_detail %}<div class="mt-4">{% include "integrations/partials/toss_market_symbol_detail_result.html" %}</div>{% endif %}
+  </div>
+</section>

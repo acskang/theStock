@@ -1,0 +1,30 @@
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle mb-0">
+    <thead>
+      <tr>
+        <th>종목</th>
+        <th>실현수량</th>
+        <th>매도금액</th>
+        <th>매도원가</th>
+        <th>실현손익</th>
+        <th>수익률</th>
+        <th>매도 건수</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in realized.summary_rows %}
+        <tr>
+          <td class="fw-semibold">{{ row.stock_name }}</td>
+          <td>{{ row.sold_qty }}</td>
+          <td>{{ row.proceeds }}</td>
+          <td>{{ row.cost }}</td>
+          <td class="{{ row.tone_class }}">{{ row.profit }} <span class="small">({{ row.result_label }})</span></td>
+          <td class="{{ row.tone_class }}">{{ row.profit_rate }}%</td>
+          <td>{{ row.sell_count }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="text-secondary">실현손익을 계산할 매도 거래가 없습니다.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

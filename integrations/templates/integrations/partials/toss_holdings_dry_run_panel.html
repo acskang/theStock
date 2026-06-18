@@ -1,0 +1,96 @@
+<div id="toss-holdings-dry-run-panel" class="card">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+      <div>
+        <h3 class="h5 fw-bold mb-1">보유종목 미리보기</h3>
+        <p class="text-muted mb-0">
+          실제 UserHolding DB를 변경하지 않는 dry-run preview입니다.
+          create/update/remove_candidate는 예정 내역이며 실제 반영은 후속 단계에서 별도 승인 후 진행됩니다.
+        </p>
+      </div>
+      {% if toss_api_calls_enabled %}
+        <span class="badge text-bg-success">dry-run enabled</span>
+      {% else %}
+        <span class="badge text-bg-secondary">dry-run disabled</span>
+      {% endif %}
+    </div>
+
+    <div class="alert alert-info" role="alert">
+      symbol을 입력한 부분 조회에서는 삭제 후보를 만들지 않습니다. 전체 조회일 때만 remove_candidate를 계산합니다.
+    </div>
+
+    {% if holdings_dry_run_error %}
+      <div class="alert alert-danger" role="alert">{{ holdings_dry_run_error }}</div>
+    {% endif %}
+    {% if holdings_dry_run_message %}
+      <div class="alert alert-success" role="alert">{{ holdings_dry_run_message }}</div>
+    {% endif %}
+    {% if holdings_apply_error %}
+      <div class="alert alert-danger" role="alert">
+        {{ holdings_apply_error }}
+        <div class="small mt-1">DB 변경 없음 또는 전체 작업 취소 상태입니다. dry-run을 다시 실행해 주세요.</div>
+      </div>
+    {% endif %}
+    {% if holdings_apply_message %}
+      <div class="alert alert-success" role="alert">{{ holdings_apply_message }}</div>
+    {% endif %}
+
+    {% if not toss_api_calls_enabled %}
+      <div class="alert alert-warning mb-0" role="alert">
+        현재 Toss API 호출 기능이 비활성화되어 있어 보유종목 미리보기를 실행할 수 없습니다.
+      </div>
+    {% elif safe_status.status != "active" %}
+      <div class="alert alert-warning mb-0" role="alert">
+        보유종목 미리보기는 active credential에서만 실행할 수 있습니다. 연결 확인을 먼저 완료해 주세요.
+      </div>
+    {% else %}
+      <form method="post" action="{% url 'integrations:toss_holdings_dry_run' %}"
+            hx-post="{% url 'integrations:toss_holdings_dry_run' %}"
+            hx-target="#toss-holdings-dry-run-panel"
+            hx-swap="outerHTML">
+        {% csrf_token %}
+        {% if holdings_dry_run_form.non_field_errors %}
+          <div class="alert alert-danger" role="alert">{{ holdings_dry_run_form.non_field_errors }}</div>
+        {% endif %}
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-5">
+            <label class="form-label" for="{{ holdings_dry_run_form.symbol.id_for_label }}">
+              {{ holdings_dry_run_form.symbol.label }}
+            </label>
+            {{ holdings_dry_run_form.symbol }}
+            <div class="form-text">{{ holdings_dry_run_form.symbol.help_text }}</div>
+            {% for error in holdings_dry_run_form.symbol.errors %}
+              <div class="form-text text-danger">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-12 col-md-5">
+            <div class="form-check">
+              {{ holdings_dry_run_form.confirm }}
+              <label class="form-check-label" for="{{ holdings_dry_run_form.confirm.id_for_label }}">
+                {{ holdings_dry_run_form.confirm.label }}
+              </label>
+              {% for error in holdings_dry_run_form.confirm.errors %}
+                <div class="form-text text-danger">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="col-12 col-md-2">
+            <button type="submit" class="btn btn-outline-dark w-100">미리보기</button>
+          </div>
+        </div>
+      </form>
+    {% endif %}
+
+    {% if holdings_dry_run_plan %}
+      <div class="mt-4">
+        {% include "integrations/partials/toss_holdings_dry_run_result.html" %}
+      </div>
+    {% endif %}
+
+    {% if holdings_apply_result %}
+      <div class="mt-4">
+        {% include "integrations/partials/toss_holdings_apply_result.html" %}
+      </div>
+    {% endif %}
+  </div>
+</div>

@@ -103,13 +103,20 @@ market data
 Toss OpenAPI 계좌/자산 API 연동 시 다음 정보는 민감한 금융 관련 정보로 분류한다.
 
 ```text
+Toss client_id
+Toss client_secret
+access_token
+refresh_token
+X-Tossinvest-Account
 accountSeq
+accountNo
 계좌 식별자 또는 계좌번호에 준하는 값
 보유 종목과 수량
 매입가, 평가금액, 손익
 매수 가능 금액
 매도 가능 수량
 주문 목록과 주문 상세
+order id
 수수료 조회 결과 중 사용자 계좌와 연결되는 정보
 ```
 
@@ -119,7 +126,20 @@ accountSeq
 민감한 금융 관련 정보
 ```
 
-`X-Tossinvest-Account` 헤더 값, access token, refresh token 또는 token에 준하는 값은 로그, 문서, Git, 테스트 fixture에 저장하지 않는다.
+`Toss client_id`, `Toss client_secret`, `X-Tossinvest-Account` 헤더 값, access token, refresh token 또는 token에 준하는 값은 로그, 문서, Git, 테스트 fixture에 저장하지 않는다.
+
+사용자별 Toss API credential을 저장하는 후속 구조에서는 다음 원칙을 적용한다.
+
+```text
+1. Toss client_id/client_secret/token 평문 DB 저장 금지.
+2. application-level encrypted field 적용.
+3. SQL query로 평문 credential이 조회되지 않아야 함.
+4. SQLCipher는 SQLite DB 파일 보호용이며 credential column encryption 대체재가 아님.
+5. 본인 재인증 후 제한적 reveal만 허용.
+6. credential reveal/access audit 기록.
+7. 탈퇴/연동해제 시 credential 삭제 또는 crypto-shredding 필요.
+8. LLM/Ollama에 raw credential/account/order 전달 금지.
+```
 
 ---
 
@@ -405,9 +425,18 @@ DB 전체 암호화 또는 디스크 암호화는 운영 환경 정책에 따른
 available_cash
 portfolio snapshot 상세
 user risk profile 상세
+Toss client_id
+Toss client_secret
+Toss access_token
+Toss refresh_token
+Toss account identity hash source
 ```
 
-초기에는 접근 제어와 로그 마스킹을 우선 적용하고, 필요 시 필드 암호화를 추가한다.
+초기에는 접근 제어와 로그 마스킹을 우선 적용하고, 사용자별 Toss credential 저장을 구현하는 단계에서는 application-level encrypted field를 필수로 적용한다.
+
+SQLite 환경에서 SQLCipher는 DB 파일 유출 방어 계층으로 검토한다. 그러나 SQLCipher만으로 credential 보안 요건을 충족하지 않는다. 애플리케이션이 DB를 연 뒤 평문 column으로 저장된 credential은 SQL query 결과에서 평문으로 보일 수 있기 때문이다. 따라서 Toss credential은 column 자체에 ciphertext를 저장해야 한다.
+
+`CREDENTIAL_ENCRYPTION_KEY`, `CREDENTIAL_HASH_PEPPER`, `SQLCIPHER_DATABASE_KEY`는 DB에 저장하지 않고 `.env` 또는 Secret Manager에서 관리한다. 실제 값은 문서, Git, fixture, log에 기록하지 않는다.
 
 ---
 
@@ -437,6 +466,8 @@ Toss credential과 계좌 식별자는 다음 위치에 저장하지 않는다.
 5. DataIngestionLog details 원문
 6. 오류 추적 시스템의 raw payload
 ```
+
+사용자별 Toss credential 구조가 도입되더라도 외부 LLM/Ollama, AG Grid/D3 화면 데이터, staff-only 운영 로그에는 credential/token/account/order 원문을 전달하지 않는다. 화면에는 masked value 또는 비식별화된 summary만 전달한다.
 
 ---
 

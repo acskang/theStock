@@ -1,0 +1,76 @@
+{% extends "portfolio/analysis/base.html" %}
+
+{% block analysis_title %}손익 개요{% endblock %}
+{% block analysis_heading %}손익 개요{% endblock %}
+
+{% block analysis_content %}
+{% if not has_transactions %}
+  <div class="alert alert-info">
+    분석할 거래 내역이 없습니다.
+    <a href="{% url 'upload_csv' %}" class="alert-link">CSV 업로드</a> 또는
+    <a href="{% url 'transaction_create' %}" class="alert-link">거래 등록</a>을 먼저 진행하세요.
+  </div>
+{% endif %}
+
+<section class="row g-3 mb-4" aria-label="손익 개요 KPI">
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 장부가</div><div class="fs-5 fw-bold">{{ holdings_summary.book_value }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 평가금액</div><div class="fs-5 fw-bold">{{ holdings_summary.market_value }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 평가손익</div><div class="fs-5 fw-bold {{ holdings_summary.tone_class }}">{{ holdings_summary.profit }} ({{ holdings_summary.profit_rate }}%)</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 실현손익</div><div class="fs-5 fw-bold {{ realized.total.tone_class }}">{{ realized.total.profit }} ({{ realized.total.profit_rate }}%)</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">보유 종목</div><div class="fs-5 fw-bold">{{ holdings_summary.count }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">손실 보유 종목</div><div class="fs-5 fw-bold text-danger">{{ holdings_summary.loss_count }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">가격 조회 실패</div><div class="fs-5 fw-bold">{{ holdings_summary.price_error_count }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">계산 기준</div><div class="fw-semibold">거래 원장 기준</div><div class="small text-secondary">{{ generated_at }}</div></div></div>
+</section>
+
+<div class="alert alert-secondary">
+  평가손익은 현재 보유 중인 미확정 손익이고, 실현손익은 매도 완료로 확정된 손익입니다.
+  통화 환산 근거가 없는 합산 손익은 별도로 표시하지 않습니다.
+</div>
+
+<section class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h5 mb-3">평가수익 상위</h2>
+      <ul class="list-group list-group-flush">
+        {% for row in top_holding_gains %}<li class="list-group-item d-flex justify-content-between"><span>{{ row.stock_name }}</span><span class="text-success">{{ row.profit }} / {{ row.profit_rate }}%</span></li>
+        {% empty %}<li class="list-group-item text-secondary">평가수익 종목이 없습니다.</li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h5 mb-3">평가손실 상위</h2>
+      <ul class="list-group list-group-flush">
+        {% for row in top_holding_losses %}<li class="list-group-item d-flex justify-content-between"><span>{{ row.stock_name }}</span><span class="text-danger">{{ row.profit }} / {{ row.profit_rate }}%</span></li>
+        {% empty %}<li class="list-group-item text-secondary">평가손실 종목이 없습니다.</li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h5 mb-3">실현수익 상위</h2>
+      <ul class="list-group list-group-flush">
+        {% for row in top_realized_gains %}<li class="list-group-item d-flex justify-content-between"><span>{{ row.stock_name }}</span><span class="text-success">{{ row.profit }} / {{ row.profit_rate }}%</span></li>
+        {% empty %}<li class="list-group-item text-secondary">실현수익 종목이 없습니다.</li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h5 mb-3">실현손실 상위</h2>
+      <ul class="list-group list-group-flush">
+        {% for row in top_realized_losses %}<li class="list-group-item d-flex justify-content-between"><span>{{ row.stock_name }}</span><span class="text-danger">{{ row.profit }} / {{ row.profit_rate }}%</span></li>
+        {% empty %}<li class="list-group-item text-secondary">실현손실 종목이 없습니다.</li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+</section>
+
+<section class="row g-3">
+  <div class="col-md-6 col-xl-3"><a class="btn btn-outline-primary w-100" href="{% url 'holdings_valuation' %}">보유 평가 자세히 보기</a></div>
+  <div class="col-md-6 col-xl-3"><a class="btn btn-outline-primary w-100" href="{% url 'realized_profit' %}">실현손익 자세히 보기</a></div>
+  <div class="col-md-6 col-xl-3"><a class="btn btn-outline-primary w-100" href="{% url 'buy_review' %}">매수 회고 분석하기</a></div>
+  <div class="col-md-6 col-xl-3"><a class="btn btn-outline-primary w-100" href="{% url 'buy_review_ranking' %}">회고 랭킹 보기</a></div>
+</section>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "portfolio/analysis/base.html" %}
+
+{% block analysis_title %}매수 회고{% endblock %}
+{% block analysis_heading %}매수 회고{% endblock %}
+
+{% block analysis_content %}
+<section class="card mb-4">
+  <div class="card-body">
+    <h2 class="h5 mb-2">종목 선택</h2>
+    <p class="text-secondary mb-3">매수 회고는 선택한 종목 하나만 상세 분석합니다. 전체 종목 비교는 회고 랭킹 화면에서 확인하세요.</p>
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-8 col-lg-6">
+        <label for="review-stock" class="form-label small">종목</label>
+        <select id="review-stock" name="stock" class="form-select" required>
+          <option value="">분석할 종목을 선택하세요</option>
+          {% for item in stock_choices %}
+            <option value="{{ item.key }}">{{ item.name }}{% if item.key != item.name %} ({{ item.key }}){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4 col-lg-2">
+        <button type="submit" class="btn btn-primary w-100">회고 보기</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="row g-3">
+  <div class="col-lg-6">
+    <div class="border rounded p-3 h-100">
+      <h2 class="h5">판정 기준</h2>
+      <ul class="mb-0">
+        <li>잘한 매수: 이후 가격 흐름과 회복 품질이 좋은 사례</li>
+        <li>보통 매수: 명확한 우위나 약점이 크지 않은 사례</li>
+        <li>아쉬운 매수: 이후 낙폭 또는 회복 지연이 컸던 사례</li>
+        <li>판단 보류: DailyPrice 데이터가 부족한 사례</li>
+      </ul>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="border rounded p-3 h-100">
+      <h2 class="h5">분석 가능한 종목</h2>
+      {% if stock_choices %}
+        <div class="d-flex flex-wrap gap-2">
+          {% for item in stock_choices|slice:":20" %}
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'buy_review_detail' stock_code=item.key %}">{{ item.name }}</a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-secondary mb-0">회고 분석이 가능한 매수 거래가 없습니다.</p>
+      {% endif %}
+      <hr>
+      <a class="btn btn-outline-primary" href="{% url 'buy_review_ranking' %}">회고 랭킹 보기</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

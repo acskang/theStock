@@ -1,0 +1,53 @@
+<section class="card h-100" aria-label="로컬 UserHolding 요약">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+      <div>
+        <h3 class="h5 fw-bold mb-1">로컬 theStock 보유종목</h3>
+        <p class="text-muted mb-0">현재 UserHolding에 저장된 내 보유종목 요약입니다.</p>
+      </div>
+      <a class="btn btn-outline-dark btn-sm" href="{{ portfolio_summary_url }}">포트폴리오 요약</a>
+    </div>
+
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <div class="border rounded p-2 h-100">
+          <div class="small text-muted">UserHolding count</div>
+          <div class="fw-bold">{{ local_holdings_summary.count }}</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="border rounded p-2 h-100">
+          <div class="small text-muted">total purchase basis</div>
+          <div class="fw-bold">{{ local_holdings_summary.total_purchase_basis }}</div>
+        </div>
+      </div>
+    </div>
+
+    {% if local_holdings_items %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">종목</th>
+              <th scope="col">수량</th>
+              <th scope="col">평단</th>
+              <th scope="col">매입 기준액</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in local_holdings_items %}
+              <tr>
+                <td class="fw-semibold">{{ item.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.average_price }}</td>
+                <td>{{ item.purchase_basis }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info mb-0" role="alert">저장된 UserHolding이 없습니다.</div>
+    {% endif %}
+  </div>
+</section>

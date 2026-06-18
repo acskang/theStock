@@ -624,6 +624,23 @@ git grep -n "SECRET"
 git log --all --full-history -- <suspected_file>
 ```
 
+## 9.1.1 사용자별 Toss credential 사고 대응
+
+사용자별 Toss credential 구조가 도입된 이후 credential leak이 의심되면 다음 기준을 적용한다.
+
+```text
+1. 특정 사용자 credential leak 의심 시 해당 Toss credential을 revoke/delete 처리한다.
+2. 사용자에게 재등록 또는 재발급이 필요함을 고지한다.
+3. credential reveal, token refresh, Toss 계좌 조회, holdings/order history 조회 audit log를 확인한다.
+4. CREDENTIAL_ENCRYPTION_KEY leak 의심 시 단일 사용자 사고가 아니라 전체 credential 사고로 격상한다.
+5. key rotation 계획을 수립하고 encrypted field 재암호화 또는 credential 재등록 절차를 진행한다.
+6. SQLCIPHER_DATABASE_KEY와 CREDENTIAL_ENCRYPTION_KEY의 역할을 구분한다.
+7. SQLCipher key leak은 SQLite DB 파일 유출 방어 계층 사고이며, credential column encryption key leak과 별도로 판단한다.
+8. backup/restore 경로에 남은 credential ciphertext도 민감정보로 취급한다.
+```
+
+SQLCipher는 SQLite DB 파일 보호용이다. Toss credential column 보안은 application-level encrypted field와 `CREDENTIAL_ENCRYPTION_KEY` 관리가 핵심이다.
+
 ## 9.2 비정상 로그인/접근
 
 확인:

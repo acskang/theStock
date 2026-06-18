@@ -1,0 +1,40 @@
+<section aria-label="다건 현재가 결과">
+  <div class="small text-muted mb-2">요청 {{ quote_batch.requested_symbols|length }}개 · 표시 {{ quote_batch.item_count }}개 · 조회 시각 {{ quote_batch.fetched_at }}</div>
+  {% if quote_batch.missing_symbols %}
+    <div class="alert alert-info">정보를 찾지 못한 종목: {{ quote_batch.missing_symbols|join:", " }}</div>
+  {% endif %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead>
+        <tr>
+          <th>종목명</th><th>영문명</th><th>시장</th><th>종목유형</th>
+          <th>현재가</th><th>통화</th><th>데이터 시각</th><th>상장 상태</th><th>거래정지</th><th>NXT</th><th>상세</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in quote_batch.items %}
+          <tr>
+            <td class="fw-semibold">{% if item.stock_info %}{{ item.stock_info.name|default:item.symbol }}{% else %}{{ item.symbol }}{% endif %}</td>
+            <td>{% if item.stock_info %}{{ item.stock_info.english_name|default:"-" }}{% else %}-{% endif %}</td>
+            <td>{% if item.stock_info %}{{ item.stock_info.market|default:"-" }}{% else %}-{% endif %}</td>
+            <td>{% if item.stock_info %}{{ item.stock_info.security_type|default:"-" }}{% else %}-{% endif %}</td>
+            <td>{% if item.price %}{{ item.price.last_price|default:"-" }}{% else %}-{% endif %}</td>
+            <td>{% if item.price %}{{ item.price.currency|default:"-" }}{% elif item.stock_info %}{{ item.stock_info.currency|default:"-" }}{% else %}-{% endif %}</td>
+            <td>{% if item.price %}{{ item.price.timestamp|default:"-" }}{% else %}-{% endif %}</td>
+            <td>{% if item.stock_info %}{{ item.stock_info.status|default:"-" }}{% else %}-{% endif %}</td>
+            <td>{% if item.stock_info %}KRX {{ item.stock_info.krx_trading_suspended|yesno:"정지,정상,-" }} / NXT {{ item.stock_info.nxt_trading_suspended|yesno:"정지,정상,-" }}{% else %}-{% endif %}</td>
+            <td>{% if item.stock_info %}{{ item.stock_info.nxt_supported|yesno:"지원,미지원,-" }}{% else %}-{% endif %}</td>
+            <td>
+              <form method="post" action="{{ detail_url }}" hx-post="{{ detail_url }}" hx-target="#toss-market-symbol-detail" hx-swap="outerHTML">
+                {% csrf_token %}
+                <input type="hidden" name="symbol" value="{{ item.symbol }}">
+                <input type="hidden" name="trades_count" value="20">
+                <button type="submit" class="btn btn-outline-dark btn-sm">상세</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

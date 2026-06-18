@@ -1,0 +1,40 @@
+<div class="alert alert-info" role="alert">
+  여러 계좌가 확인되었습니다. 대표 계좌 1개만 연결합니다. 다계좌 지원은 후속 단계입니다.
+</div>
+
+<form method="post" action="{% url 'integrations:toss_credential_verify' %}"
+      hx-post="{% url 'integrations:toss_credential_verify' %}" hx-target="#toss-credential-panel" hx-swap="outerHTML">
+  {% csrf_token %}
+  {% if account_selection_form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">{{ account_selection_form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="list-group mb-3">
+    {% for candidate in account_candidates %}
+      {% if candidate.is_selectable %}
+        <label class="list-group-item d-flex gap-3 align-items-start">
+          <input class="form-check-input mt-1" type="radio" name="selected_account_hash"
+                 value="{{ candidate.account_hash }}" required>
+          <span>
+            <span class="fw-semibold">{{ candidate.account_masked }}</span>
+            <span class="text-muted small d-block">{{ candidate.account_type|default:"-" }}</span>
+          </span>
+        </label>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% for error in account_selection_form.selected_account_hash.errors %}
+    <div class="form-text text-danger mb-2">{{ error }}</div>
+  {% endfor %}
+
+  <div class="form-check mb-3">
+    {{ account_selection_form.confirm }}
+    <label class="form-check-label" for="{{ account_selection_form.confirm.id_for_label }}">
+      {{ account_selection_form.confirm.label }}
+    </label>
+    {% for error in account_selection_form.confirm.errors %}
+      <div class="form-text text-danger">{{ error }}</div>
+    {% endfor %}
+  </div>
+  <button type="submit" class="btn btn-dark">대표 계좌 연결</button>
+</form>

@@ -1,0 +1,22 @@
+<section class="card mb-3">
+  <div class="card-body">
+    <h3 class="h5 fw-bold mb-3">동기화 상태</h3>
+    {% if state_error %}
+      <div class="alert alert-warning">{{ state_error }}</div>
+    {% endif %}
+    <div class="row g-3">
+      <div class="col-12 col-md-4"><div class="border rounded p-3"><div class="small text-muted">Credential 상태</div><div class="fw-bold">{{ safe_status.status }}</div></div></div>
+      <div class="col-12 col-md-4"><div class="border rounded p-3"><div class="small text-muted">대표 계좌</div><div class="fw-bold">{{ safe_status.account_masked|default:"-" }}</div></div></div>
+      <div class="col-12 col-md-4"><div class="border rounded p-3"><div class="small text-muted">최초 동기화</div><div class="fw-bold">{{ sync_state.initial_sync_completed|yesno:"완료,미완료,-" }}</div></div></div>
+    </div>
+    {% if sync_state %}
+      <dl class="row small mb-0 mt-3">
+        <dt class="col-5 col-md-3 text-muted">마지막 성공</dt><dd class="col-7 col-md-9">{{ sync_state.last_successful_sync_at|default:"-" }}</dd>
+        <dt class="col-5 col-md-3 text-muted">마지막 orderedAt</dt><dd class="col-7 col-md-9">{{ sync_state.last_successful_ordered_at|default:"-" }}</dd>
+        <dt class="col-5 col-md-3 text-muted">마지막 filledAt</dt><dd class="col-7 col-md-9">{{ sync_state.last_successful_filled_at|default:"-" }}</dd>
+        <dt class="col-5 col-md-3 text-muted">최근 실행</dt><dd class="col-7 col-md-9">{{ sync_state.last_run_mode|default:"-" }} / {{ sync_state.last_run_status|default:"-" }}</dd>
+        <dt class="col-5 col-md-3 text-muted">최근 오류</dt><dd class="col-7 col-md-9">{{ sync_state.last_error_summary|default:"-" }}</dd>
+      </dl>
+    {% endif %}
+  </div>
+</section>

@@ -209,12 +209,20 @@ def get_price_snapshot(stock_name: str) -> PriceSnapshot:
         return PriceSnapshot(stock_name, '', None, None, None, None, datetime.now(), error='티커 매핑 없음')
 
     ticker = mapping.ticker
+    fetched_at = datetime.now()
     try:
         tk = yf.Ticker(ticker)
         info = tk.fast_info
-        current = info.get('lastPrice') or info.get('regularMarketPrice')
-        prev_close = info.get('previousClose')
-        currency = info.get('currency', 'KRW')
+        current = _safe_fast_info_get(info, 'lastPrice') or _safe_fast_info_get(info, 'regularMarketPrice')
+        prev_close = _safe_fast_info_get(info, 'previousClose')
+        currency = _safe_fast_info_get(info, 'currency') or 'KRW'
+        if current is None:
+            history = tk.history(period='5d', auto_adjust=False)
+            if not history.empty:
+                latest = history.iloc[-1]
+                current = latest.get('Close')
+                if len(history) >= 2:
+                    prev_close = history.iloc[-2].get('Close')
         change_rate = None
         if current is not None and prev_close:
             change_rate = ((current - prev_close) / prev_close) * 100
@@ -225,10 +233,18 @@ def get_price_snapshot(stock_name: str) -> PriceSnapshot:
             previous_close=_round_int(prev_close) if prev_close is not None else None,
             change_rate=round(change_rate, 2) if change_rate is not None else None,
             currency=currency,
-            fetched_at=datetime.now(),
+            fetched_at=fetched_at,
+            error='' if current is not None else '시세 데이터 없음',
         )
     except Exception as exc:
-        return PriceSnapshot(stock_name, ticker, None, None, None, None, datetime.now(), error=str(exc))
+        return PriceSnapshot(stock_name, ticker, None, None, None, None, fetched_at, error='시세 조회 실패')
+
+
+def _safe_fast_info_get(info, key):
+    try:
+        return info.get(key)
+    except Exception:
+        return None
 
 
 def get_price_board(names: List[str]) -> List[PriceSnapshot]:

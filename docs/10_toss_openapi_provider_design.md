@@ -891,3 +891,46 @@ Toss OpenAPI provider는 단순 API 호출 기능이 아니다.
 ```
 
 이 원칙을 지켜야 `theStock`의 컨설팅 결과가 안정적인 실제 시장 데이터 위에서 동작할 수 있다.
+
+# 17. User-scoped Credential Refactoring
+
+기존 provider 설계와 구현은 settings 기반 전역 credential을 기준으로 시작했다. 이 판단은 staff-only smoke, 운영 점검, read-only provider 검증 단계에서는 유효했다. 그러나 일반 사용자 기능으로 Toss holdings/order history/portfolio 연동을 확장하려면 사용자별 credential ownership이 선행되어야 한다.
+
+후속 아키텍처 기준:
+
+- 현재 provider는 `settings.TOSS_INVEST_CLIENT_ID`, `settings.TOSS_INVEST_CLIENT_SECRET`, `settings.TOSS_INVEST_ACCOUNT_ID` 의존성을 줄여야 한다.
+- 후속 구조에서는 provider가 사용자별 credential resolver를 받아야 한다.
+- `data_pipeline`은 provider/ingestion 책임을 유지한다.
+- 새 `integrations` 앱이 사용자 credential, account ownership, encrypted storage, audit 책임을 가진다.
+- staff-only global credential 경로와 user-scoped credential 경로를 분리한다.
+- 일반 사용자용 조회는 `request.user` owner scope를 강제한다.
+- read-only 조회부터 연결한다.
+
+권장 호출 구조:
+
+```text
+request.user
+  -> integrations credential resolver
+  -> TossInvestCredential encrypted fields decrypt in application memory
+  -> TossOpenApiClient
+  -> TossOpenApiProvider read-only call
+  -> sanitizer
+  -> user-scoped service response
+```
+
+전역 credential 정책:
+
+- 전역 `TOSS_INVEST_CLIENT_ID`, `TOSS_INVEST_CLIENT_SECRET`, `TOSS_INVEST_ACCOUNT_ID`는 staff-only 운영 점검 또는 전환 기간에만 제한적으로 유지할 수 있다.
+- 일반 사용자 데이터 조회에는 전역 credential을 사용하지 않는다.
+- `.env` 파일 자체는 운영 secret 저장용으로 유지한다.
+- 사용자별 credential은 application-level encrypted field로 DB에 ciphertext 저장한다.
+- SQLCipher는 SQLite DB 파일 유출 방어용이며 credential column encryption 대체재가 아니다.
+
+계속 제외:
+
+- 주문 생성/정정/취소 API.
+- 자동매매.
+- 컨설팅 결과와 주문 API 직접 연결.
+- `TOSS_ORDER_EXECUTION_ENABLED=true` 전환.
+
+상세 기준은 `docs/54_technical_architecture_and_toss_credential_design.md`를 따른다.

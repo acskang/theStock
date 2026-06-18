@@ -1,0 +1,12 @@
+<nav class="d-flex flex-wrap gap-2" aria-label="손익 분석 메뉴">
+  {% for url_name, label in analysis_nav_items %}
+    {% url url_name as item_url %}
+    <a
+      class="btn btn-sm {% if request.path == item_url or analysis_active_tab == 'buy_review' and url_name == 'buy_review' %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+      href="{{ item_url }}"
+      {% if request.path == item_url %}aria-current="page"{% endif %}
+    >
+      {{ label }}
+    </a>
+  {% endfor %}
+</nav>

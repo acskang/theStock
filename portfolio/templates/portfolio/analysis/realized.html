@@ -1,0 +1,69 @@
+{% extends "portfolio/analysis/base.html" %}
+
+{% block analysis_title %}실현손익{% endblock %}
+{% block analysis_heading %}실현손익{% endblock %}
+
+{% block analysis_content %}
+<div class="alert alert-secondary">
+  평가손익은 현재 보유 중인 미확정 손익이고, 실현손익은 매도 완료로 확정된 손익입니다.
+</div>
+
+<section class="row g-3 mb-4" aria-label="실현손익 KPI">
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 실현 매도수량</div><div class="fs-5 fw-bold">{{ realized.total.sold_qty }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 매도금액</div><div class="fs-5 fw-bold">{{ realized.total.proceeds }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 매도원가</div><div class="fs-5 fw-bold">{{ realized.total.cost }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 실현손익</div><div class="fs-5 fw-bold {{ realized.total.tone_class }}">{{ realized.total.profit }} ({{ realized.total.profit_rate }}%)</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">수익 종목</div><div class="fs-5 fw-bold text-success">{{ realized.total.profit_stock_count }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">손실 종목</div><div class="fs-5 fw-bold text-danger">{{ realized.total.loss_stock_count }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">계산 경고</div><div class="fs-5 fw-bold">{{ realized.total.warning_count }}</div></div></div>
+</section>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-sm-6 col-xl-2">
+    <label class="form-label small" for="date-from">시작일</label>
+    <input id="date-from" class="form-control" type="date" name="date_from" value="{{ date_from }}">
+  </div>
+  <div class="col-sm-6 col-xl-2">
+    <label class="form-label small" for="date-to">종료일</label>
+    <input id="date-to" class="form-control" type="date" name="date_to" value="{{ date_to }}">
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <label class="form-label small" for="realized-stock">종목</label>
+    <input id="realized-stock" class="form-control" type="search" name="stock" value="{{ stock_filter }}" placeholder="종목명">
+  </div>
+  <div class="col-sm-6 col-xl-2">
+    <label class="form-label small" for="realized-result">결과</label>
+    <select id="realized-result" name="result" class="form-select">
+      {% for value, label in realized_result_options %}
+        <option value="{{ value }}"{% if selected_result == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-6 col-xl-2">
+    <button class="btn btn-primary w-100" type="submit">조회</button>
+  </div>
+  <div class="col-sm-6 col-xl-3 text-xl-end">
+    <a class="btn btn-outline-secondary w-100" href="{{ realized_csv_url }}">현재 조건 CSV 다운로드</a>
+  </div>
+</form>
+
+{% if realized.warnings %}
+  <div class="alert alert-warning">
+    계산 경고가 있습니다. 거래 순서 또는 매수 잔량 부족 항목을 확인하세요.
+  </div>
+{% endif %}
+
+<section class="card mb-4">
+  <div class="card-body">
+    <h2 class="h5 mb-3">종목별 실현손익</h2>
+    {% include "portfolio/analysis/partials/_realized_by_stock_table.html" with rows=realized.summary_rows %}
+  </div>
+</section>
+
+<details class="card">
+  <summary class="card-header fw-semibold">매도별 계산 상세 보기</summary>
+  <div class="card-body">
+    {% include "portfolio/analysis/partials/_realized_detail_table.html" with realized=realized %}
+  </div>
+</details>
+{% endblock %}

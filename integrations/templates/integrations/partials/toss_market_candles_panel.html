@@ -1,0 +1,27 @@
+<section id="toss-market-candles" class="card">
+  <div class="card-body">
+    <h3 class="h5 fw-bold mb-1">캔들 데이터</h3>
+    <p class="text-muted">1분봉 또는 일봉을 table로 조회합니다. 차트 시각화는 후속 단계입니다.</p>
+    {% if candles_error %}<div class="alert alert-danger">{{ candles_error }}</div>{% endif %}
+    {% if candles_message %}<div class="alert alert-success">{{ candles_message }}</div>{% endif %}
+    {% if not toss_api_calls_enabled %}
+      <div class="alert alert-warning mb-0">현재 Toss API 조회 기능이 비활성화되어 있습니다.</div>
+    {% elif safe_status.status != "active" %}
+      <div class="alert alert-warning mb-0">Toss credential 연결 확인을 먼저 완료해 주세요.</div>
+    {% else %}
+      <form method="post" action="{{ candles_url }}" hx-post="{{ candles_url }}" hx-target="#toss-market-candles" hx-swap="outerHTML">
+        {% csrf_token %}
+        {{ candle_form.before }}
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-3"><label class="form-label">{{ candle_form.symbol.label }}</label>{{ candle_form.symbol }}</div>
+          <div class="col-6 col-md-2"><label class="form-label">{{ candle_form.interval.label }}</label>{{ candle_form.interval }}</div>
+          <div class="col-6 col-md-2"><label class="form-label">{{ candle_form.count.label }}</label>{{ candle_form.count }}</div>
+          <div class="col-12 col-md-2"><div class="form-check">{{ candle_form.adjusted }} <label class="form-check-label">{{ candle_form.adjusted.label }}</label></div></div>
+          <div class="col-12 col-md-3"><button type="submit" class="btn btn-dark w-100">캔들 조회</button></div>
+        </div>
+        {% for error in candle_form.symbol.errors %}<div class="form-text text-danger">{{ error }}</div>{% endfor %}
+      </form>
+    {% endif %}
+    {% if candle_page %}<div class="mt-4">{% include "integrations/partials/toss_market_candles_result.html" %}</div>{% endif %}
+  </div>
+</section>

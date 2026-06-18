@@ -1,0 +1,43 @@
+<section class="card">
+  <div class="card-body">
+    <h3 class="h5 fw-bold mb-3">최근 Toss import 기록</h3>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>체결일시</th>
+            <th>종목</th>
+            <th>매수/매도</th>
+            <th>수량</th>
+            <th>평균 체결가</th>
+            <th>통화</th>
+            <th>수수료</th>
+            <th>세금</th>
+            <th>Source status</th>
+            <th>Import result</th>
+            <th>Transaction</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in recent_import_records %}
+            <tr>
+              <td>{{ record.filled_at|default:"-" }}</td>
+              <td>{{ record.display_name }}</td>
+              <td>{{ record.side }}</td>
+              <td>{{ record.filled_quantity|default:"-" }}</td>
+              <td>{{ record.average_filled_price|default:"-" }}</td>
+              <td>{{ record.currency|default:"-" }}</td>
+              <td>{{ record.commission|default:"-" }}</td>
+              <td>{{ record.tax|default:"-" }}</td>
+              <td>{{ record.source_status|default:"-" }}</td>
+              <td>{{ record.import_result }}</td>
+              <td>{% if record.transaction_id %}연결됨{% else %}-{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="11" class="text-muted">아직 Toss 거래 import 기록이 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

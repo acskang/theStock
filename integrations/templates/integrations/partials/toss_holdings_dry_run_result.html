@@ -1,0 +1,146 @@
+<section aria-label="보유종목 dry-run 결과">
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md-2">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">create</div>
+        <div class="fw-bold">{{ holdings_dry_run_plan.create_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">update</div>
+        <div class="fw-bold">{{ holdings_dry_run_plan.update_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">unchanged</div>
+        <div class="fw-bold">{{ holdings_dry_run_plan.unchanged_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">삭제 후보</div>
+        <div class="fw-bold">{{ holdings_dry_run_plan.remove_candidate_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">검토 필요</div>
+        <div class="fw-bold">{{ holdings_dry_run_plan.skipped_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">target/current</div>
+        <div class="fw-bold">{{ holdings_dry_run_plan.target_count }}/{{ holdings_dry_run_plan.current_count }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="small text-muted mb-3">
+    생성 시각: {{ holdings_dry_run_plan.generated_at }}
+    · symbol_filter: {{ holdings_dry_run_plan.symbol_filter|default:"전체" }}
+    · 실제 DB에는 반영되지 않았습니다.
+  </div>
+
+  {% if holdings_dry_run_plan.symbol_filter %}
+    <div class="alert alert-info" role="alert">
+      부분 조회 dry-run입니다. symbol_filter가 있을 때는 remove_candidate를 만들지 않습니다.
+    </div>
+  {% endif %}
+
+  <div class="alert alert-warning" role="alert">
+    <div class="fw-bold mb-1">실제 반영 전 확인</div>
+    <div>실제 반영 시 create/update만 처리합니다.</div>
+    <div>삭제 후보는 삭제하지 않습니다.</div>
+    <div>반영 시점에 데이터를 다시 조회하며 dry-run 결과와 다르면 반영하지 않습니다.</div>
+    <div>반영 작업은 전체 성공 또는 전체 취소 방식으로 처리합니다.</div>
+  </div>
+
+  {% if holdings_dry_run_plan.warnings %}
+    <div class="alert alert-warning" role="alert">
+      <div class="fw-bold mb-1">Plan warnings</div>
+      <ul class="mb-0">
+        {% for warning in holdings_dry_run_plan.warnings %}
+          <li>{{ warning }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% for action_label, items in holdings_dry_run_items_by_action.items %}
+    {% if items %}
+      <div class="mt-4">
+        <h4 class="h6 fw-bold mb-2">
+          {% if action_label == "remove_candidate" %}삭제 후보{% elif action_label == "skipped" %}검토 필요{% else %}{{ action_label }}{% endif %}
+        </h4>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th scope="col">종목</th>
+                <th scope="col">이름</th>
+                <th scope="col">현재 수량</th>
+                <th scope="col">대상 수량</th>
+                <th scope="col">현재 평단</th>
+                <th scope="col">대상 평단</th>
+                <th scope="col">차이/경고</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+                <tr>
+                  <td class="fw-semibold">{{ item.symbol|default:"-" }}</td>
+                  <td>
+                    {% if item.target %}{{ item.target.name|default:"-" }}{% elif item.current %}{{ item.current.name|default:"-" }}{% else %}-{% endif %}
+                  </td>
+                  <td>{% if item.current %}{{ item.current.quantity|default:"-" }}{% else %}-{% endif %}</td>
+                  <td>{% if item.target %}{{ item.target.quantity|default:"-" }}{% else %}-{% endif %}</td>
+                  <td>{% if item.current %}{{ item.current.average_purchase_price|default:"-" }}{% else %}-{% endif %}</td>
+                  <td>{% if item.target %}{{ item.target.average_purchase_price|default:"-" }}{% else %}-{% endif %}</td>
+                  <td>
+                    {% if item.diffs %}
+                      <ul class="mb-1 ps-3">
+                        {% for diff in item.diffs %}
+                          <li>
+                            {% if diff.severity == "info" %}정보성 차이{% else %}업데이트 차이{% endif %}
+                            · {{ diff.field }}: {{ diff.current|default:"-" }} → {{ diff.target|default:"-" }}
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+                    {% if item.warnings %}
+                      <ul class="mb-0 ps-3 text-warning">
+                        {% for warning in item.warnings %}
+                          <li>{{ warning }}</li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+                    {% if not item.diffs and not item.warnings %}
+                      <span class="text-muted">-</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+  {% endfor %}
+
+  <div class="mt-4">
+    {% if holdings_apply_form %}
+      {% include "integrations/partials/toss_holdings_apply_form.html" %}
+    {% elif not holdings_apply_enabled %}
+      <div class="alert alert-secondary mb-0" role="alert">
+        실제 UserHolding 반영 기능은 현재 비활성화되어 있습니다.
+      </div>
+    {% elif holdings_dry_run_plan.create_count|add:holdings_dry_run_plan.update_count == 0 %}
+      <div class="alert alert-info mb-0" role="alert">
+        반영할 create/update 항목이 없습니다. unchanged, remove_candidate, skipped 항목은 실제 반영하지 않습니다.
+      </div>
+    {% endif %}
+  </div>
+</section>

@@ -443,6 +443,38 @@ CORS_ALLOW_ALL_ORIGINS=True 금지
 [ ] 감사 로그 기본 구조 구현
 ```
 
+## 12.1 External Integration Credential 권한 정책
+
+사용자별 Toss credential 구조를 도입할 경우 다음 권한 정책을 적용한다.
+
+일반 사용자:
+
+- 본인의 `TossInvestCredential` 등록/수정/삭제/상태 조회만 가능하다.
+- 다른 사용자의 credential, account mapping, Toss 조회 결과에 접근할 수 없다.
+- credential reveal은 본인 재인증 후 짧은 시간 동안만 허용한다.
+- user-scoped Toss holdings/order history는 owner scope를 반드시 강제한다.
+
+Staff:
+
+- 기본적으로 사용자 `client_secret`, access token, refresh token 평문 reveal은 불가하다.
+- 연결 상태, masked account, safe error, audit summary 확인은 운영 목적에 한해 허용할 수 있다.
+- staff-only global credential 기반 기능과 일반 사용자 user-scoped 기능을 URL/API/template/permission에서 분리한다.
+- staff 민감 조회는 audit log 대상이다.
+
+금지:
+
+- `user_id`, username, email query로 다른 사용자 credential 조회.
+- account 원문 query 허용.
+- credential/token/header 원문 response.
+- 전역 Toss credential로 일반 사용자 holdings/order history를 조회.
+- 컨설팅 결과를 주문 API 또는 자동매매에 연결.
+
+Audit:
+
+- credential 등록/수정/삭제/reveal/access/token refresh/Toss 조회/permission denied 이벤트를 기록한다.
+- AuditLog에는 actor/target/account를 hash 또는 opaque reference로 저장한다.
+- AuditLog에도 credential 원문, account 원문, token/header, raw response, order id 원문을 저장하지 않는다.
+
 ---
 
 # 12. Codex 작업 지시 요약

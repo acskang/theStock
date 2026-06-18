@@ -1,0 +1,10 @@
+[Unit]
+Description=Run theStock investor flow collection on weekdays
+
+[Timer]
+OnCalendar=Mon..Fri 18:30:00
+Persistent=true
+Unit=thestock_investor_flow_collect.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,72 @@
+<section aria-label="단일 종목 상세 시세 결과">
+  {% if symbol_detail.section_errors %}
+    <div class="alert alert-warning">
+      {% for key, message in symbol_detail.section_errors.items %}<div>{{ message }}</div>{% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md-3"><div class="border rounded p-2 h-100"><div class="small text-muted">종목</div><div class="fw-bold">{% if symbol_detail.quote.stock_info %}{{ symbol_detail.quote.stock_info.name|default:symbol_detail.symbol }}{% else %}{{ symbol_detail.symbol }}{% endif %}</div></div></div>
+    <div class="col-6 col-md-3"><div class="border rounded p-2 h-100"><div class="small text-muted">현재가</div><div class="fw-bold">{% if symbol_detail.quote.price %}{{ symbol_detail.quote.price.last_price|default:"-" }}{% else %}-{% endif %}</div></div></div>
+    <div class="col-6 col-md-3"><div class="border rounded p-2 h-100"><div class="small text-muted">통화</div><div class="fw-bold">{% if symbol_detail.quote.price %}{{ symbol_detail.quote.price.currency|default:"-" }}{% elif symbol_detail.quote.stock_info %}{{ symbol_detail.quote.stock_info.currency|default:"-" }}{% else %}-{% endif %}</div></div></div>
+    <div class="col-6 col-md-3"><div class="border rounded p-2 h-100"><div class="small text-muted">조회 시각</div><div class="fw-bold">{{ symbol_detail.fetched_at }}</div></div></div>
+  </div>
+
+  {% if symbol_detail.quote.stock_info %}
+    <div class="table-responsive mb-3">
+      <table class="table table-sm align-middle">
+        <tbody>
+          <tr><th>종목명</th><td>{{ symbol_detail.quote.stock_info.name|default:"-" }}</td><th>영문명</th><td>{{ symbol_detail.quote.stock_info.english_name|default:"-" }}</td></tr>
+          <tr><th>시장</th><td>{{ symbol_detail.quote.stock_info.market|default:"-" }}</td><th>종목유형</th><td>{{ symbol_detail.quote.stock_info.security_type|default:"-" }}</td></tr>
+          <tr><th>상장 상태</th><td>{{ symbol_detail.quote.stock_info.status|default:"-" }}</td><th>상장일</th><td>{{ symbol_detail.quote.stock_info.list_date|default:"-" }}</td></tr>
+          <tr><th>발행주식수</th><td>{{ symbol_detail.quote.stock_info.shares_outstanding|default:"-" }}</td><th>레버리지</th><td>{{ symbol_detail.quote.stock_info.leverage_factor|default:"-" }}</td></tr>
+          <tr><th>정리매매</th><td>{{ symbol_detail.quote.stock_info.liquidation_trading|yesno:"예,아니오,-" }}</td><th>NXT 지원</th><td>{{ symbol_detail.quote.stock_info.nxt_supported|yesno:"예,아니오,-" }}</td></tr>
+          <tr><th>KRX 거래정지</th><td>{{ symbol_detail.quote.stock_info.krx_trading_suspended|yesno:"정지,정상,-" }}</td><th>NXT 거래정지</th><td>{{ symbol_detail.quote.stock_info.nxt_trading_suspended|yesno:"정지,정상,-" }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-12 col-xl-6">
+      <h4 class="h6 fw-bold">매수 유의사항</h4>
+      {% if symbol_detail.warnings %}
+        <table class="table table-sm"><thead><tr><th>유형</th><th>거래소</th><th>시작</th><th>종료</th></tr></thead><tbody>
+          {% for warning in symbol_detail.warnings %}<tr><td>{{ warning.warning_label }}</td><td>{{ warning.exchange|default:"-" }}</td><td>{{ warning.start_date|default:"-" }}</td><td>{{ warning.end_date|default:"-" }}</td></tr>{% endfor %}
+        </tbody></table>
+      {% else %}<div class="alert alert-info">현재 활성 유의사항이 없습니다.</div>{% endif %}
+    </div>
+    <div class="col-12 col-xl-6">
+      <h4 class="h6 fw-bold">상·하한가</h4>
+      {% if symbol_detail.price_limits %}
+        <table class="table table-sm"><tbody>
+          <tr><th>상한가</th><td>{{ symbol_detail.price_limits.upper_limit_price|default:"가격 제한 없음" }}</td></tr>
+          <tr><th>하한가</th><td>{{ symbol_detail.price_limits.lower_limit_price|default:"가격 제한 없음" }}</td></tr>
+          <tr><th>통화</th><td>{{ symbol_detail.price_limits.currency|default:"-" }}</td></tr>
+        </tbody></table>
+      {% else %}<div class="alert alert-light border">상·하한가 정보가 없습니다.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-12 col-xl-6">
+      <h4 class="h6 fw-bold">매도 호가</h4>
+      {% if symbol_detail.orderbook.asks %}
+        <table class="table table-sm"><thead><tr><th>가격</th><th>잔량</th></tr></thead><tbody>{% for ask in symbol_detail.orderbook.asks %}<tr><td>{{ ask.price|default:"-" }}</td><td>{{ ask.volume|default:"-" }}</td></tr>{% endfor %}</tbody></table>
+      {% else %}<div class="alert alert-light border">매도 호가 정보가 없습니다.</div>{% endif %}
+    </div>
+    <div class="col-12 col-xl-6">
+      <h4 class="h6 fw-bold">매수 호가</h4>
+      {% if symbol_detail.orderbook.bids %}
+        <table class="table table-sm"><thead><tr><th>가격</th><th>잔량</th></tr></thead><tbody>{% for bid in symbol_detail.orderbook.bids %}<tr><td>{{ bid.price|default:"-" }}</td><td>{{ bid.volume|default:"-" }}</td></tr>{% endfor %}</tbody></table>
+      {% else %}<div class="alert alert-light border">매수 호가 정보가 없습니다.</div>{% endif %}
+    </div>
+  </div>
+
+  <h4 class="h6 fw-bold mt-3">최근 체결</h4>
+  {% if symbol_detail.recent_trades %}
+    <div class="table-responsive"><table class="table table-sm"><thead><tr><th>체결가</th><th>체결수량</th><th>체결시각</th><th>통화</th></tr></thead><tbody>
+      {% for trade in symbol_detail.recent_trades %}<tr><td>{{ trade.price|default:"-" }}</td><td>{{ trade.volume|default:"-" }}</td><td>{{ trade.timestamp|default:"-" }}</td><td>{{ trade.currency|default:"-" }}</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% else %}<div class="alert alert-light border">최근 체결 정보가 없습니다.</div>{% endif %}
+</section>

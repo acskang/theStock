@@ -248,3 +248,19 @@ PASS.
 - 주문 mutation 구현 없음.
 - 민감정보 원문 패턴 없음.
 - 최종 문서 생성 완료.
+
+## 17. Post-closure Architecture Follow-up
+
+이 closure report의 PASS 판정은 기존 구현 일단락 상태에 대한 것이다. 이 문서의 테스트 결과, DB count snapshot, migration 상태, settings 안전 상태, 구현 완료 목록은 과거 검증값으로 유지한다.
+
+Closure 이후 새로 정의한 후속 아키텍처 기준은 `docs/54_technical_architecture_and_toss_credential_design.md`를 따른다.
+
+후속 기준:
+
+- user-account mapping 모델과 사용자별 Toss credential 모델은 closure 시점에는 없었다.
+- `TossInvestCredential` 또는 이에 준하는 사용자별 credential 모델은 후속 phase에서 별도 설계/구현한다.
+- 기존 staff-only read-only Toss order history/reconciliation/customer info 기능은 유지한다.
+- 일반 사용자용 Toss credential 1:1 구조는 새 구현 phase 전까지 코드에 반영되지 않았다.
+- 전역 `TOSS_INVEST_CLIENT_ID`, `TOSS_INVEST_CLIENT_SECRET`, `TOSS_INVEST_ACCOUNT_ID`는 일반 사용자 데이터 조회에 사용하지 않는 방향으로 리팩터링한다.
+- Toss credential은 application-level encrypted field로 저장해야 하며, SQLCipher는 SQLite DB 파일 유출 방어용 보조 계층으로만 본다.
+- 주문 API/자동매매 금지는 계속 유지한다.

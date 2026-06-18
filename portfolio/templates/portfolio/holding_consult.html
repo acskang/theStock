@@ -12,7 +12,7 @@
       <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'consulting_holding_list' %}">보유 종목 목록으로</a>
       <p class="consult-eyebrow">Holding Consulting</p>
       <h1 class="mb-1">{{ holding.stock.name }}</h1>
-      <div class="text-secondary">{{ holding.stock.code }} · {{ holding.stock.market }}{% if holding.stock.sector %} · {{ holding.stock.sector }}{% endif %}</div>
+      <div class="text-secondary">{{ holding.stock.market }}{% if holding.stock.sector %} · {{ holding.stock.sector }}{% endif %}</div>
     </div>
     <div class="consult-hero-actions">
       <a class="btn btn-outline-dark" href="{{ page_config.consultHistoryUrl }}">컨설팅 이력 API</a>
@@ -64,8 +64,9 @@
 </section>
 
 {{ page_config|json_script:"consult-page-config" }}
+<meta name="csrf-token" content="{{ csrf_token }}">
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'portfolio/js/holding_consult.js' %}"></script>
+<script src="{% static 'portfolio/js/holding_consult.js' %}?v=20260618-csrf-config"></script>
 {% endblock %}

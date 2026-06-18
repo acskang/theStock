@@ -1,0 +1,81 @@
+{% extends "portfolio/analysis/base.html" %}
+
+{% block analysis_title %}회고 랭킹{% endblock %}
+{% block analysis_heading %}회고 랭킹{% endblock %}
+
+{% block analysis_content %}
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-md-5 col-lg-4">
+    <label class="form-label small" for="ranking-sort">정렬 기준</label>
+    <select id="ranking-sort" name="sort" class="form-select">
+      {% for value, label in ranking_sort_options %}
+        <option value="{{ value }}"{% if selected_ranking_sort_query == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4 col-lg-3">
+    <label class="form-label small" for="min-completed">최소 평가 건수</label>
+    <select id="min-completed" name="min_completed" class="form-select">
+      {% for value in min_completed_options %}
+        <option value="{{ value }}"{% if selected_min_completed == value %} selected{% endif %}>{{ value }}건 이상</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3 col-lg-2">
+    <button type="submit" class="btn btn-primary w-100">적용</button>
+  </div>
+  <div class="col-md-12 col-lg-3 text-lg-end">
+    <a class="btn btn-outline-secondary" href="?sort={{ selected_ranking_sort_query }}&min_completed={{ selected_min_completed }}&export=retrospective_rankings_csv">CSV 다운로드</a>
+  </div>
+</form>
+
+<section class="card">
+  <div class="card-body">
+    <h2 class="h5 mb-3">종목별 매수 판단 품질</h2>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle">
+        <thead>
+          <tr>
+            <th>순위</th>
+            <th>종목</th>
+            <th>평균 회고 점수</th>
+            <th>평균 20일 성과</th>
+            <th>좋은 매수 비율</th>
+            <th>잘한/아쉬운</th>
+            <th>평가 완료</th>
+            <th>신뢰도</th>
+            <th>일관성</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in retrospective_rankings %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>
+                <div class="fw-semibold">{{ row.stock_name }}</div>
+                {% if row.stock_code %}<div class="small text-secondary">{{ row.stock_code }}{% if row.stock_market %} · {{ row.stock_market }}{% endif %}</div>{% endif %}
+                <div class="mt-1 d-flex flex-wrap gap-1">
+                  {% if row.is_current_sort_top %}<span class="badge text-bg-primary">현재 정렬 1위</span>{% endif %}
+                  {% if row.is_consistency_top %}<span class="badge text-bg-success">일관성 우수</span>{% endif %}
+                  {% if row.is_sample_low %}<span class="badge text-bg-secondary">표본 부족</span>{% endif %}
+                </div>
+              </td>
+              <td>{{ row.average_timing_score_display }}</td>
+              <td>{{ row.average_return_20_display }}</td>
+              <td>{{ row.good_ratio_display }}</td>
+              <td>{{ row.good_count }} / {{ row.bad_count }}</td>
+              <td>{{ row.scored_buy_count }}</td>
+              <td>{{ row.confidence_label }}</td>
+              <td>{{ row.consistency_label }}</td>
+              <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'buy_review_detail' stock_code=row.review_key %}">상세</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="10" class="text-secondary">회고 랭킹을 만들 수 있는 가격 데이터가 부족합니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

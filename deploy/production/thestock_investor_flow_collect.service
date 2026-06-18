@@ -1,0 +1,18 @@
+[Unit]
+Description=theStock decision input auto collection
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=cskang
+Group=www-data
+WorkingDirectory=/home/cskang/ganzskang/theStock
+Environment=DJANGO_SETTINGS_MODULE=stock_service.settings.prod
+EnvironmentFile=/etc/thestock/thestock.env
+ExecStart=/home/cskang/miniconda3/envs/dj5/bin/python manage.py collect_daily_prices --days 240
+ExecStart=/home/cskang/miniconda3/envs/dj5/bin/python manage.py collect_market_indices --codes KOSPI KOSDAQ USDKRW NASDAQ SP500 --days 240
+ExecStart=/home/cskang/miniconda3/envs/dj5/bin/python manage.py collect_investor_flows --days 60
+ExecStart=/home/cskang/miniconda3/envs/dj5/bin/python manage.py collect_risk_events --days 365
+ExecStart=/home/cskang/miniconda3/envs/dj5/bin/python manage.py collect_financial_snapshots --years 2
+ExecStart=/home/cskang/miniconda3/envs/dj5/bin/python manage.py update_data_quality --all-stocks

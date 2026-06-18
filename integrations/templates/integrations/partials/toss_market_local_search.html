@@ -1,0 +1,19 @@
+<section id="toss-market-local-search" class="card">
+  <div class="card-body">
+    <h3 class="h5 fw-bold mb-1">로컬 Stock master 검색</h3>
+    <p class="text-muted">로컬 DB의 종목명을 검색합니다. Toss API를 호출하지 않습니다.</p>
+    {% if local_search_error %}<div class="alert alert-danger">{{ local_search_error }}</div>{% endif %}
+    <form method="post" action="{{ local_search_url }}" hx-post="{{ local_search_url }}" hx-target="#toss-market-local-search" hx-swap="outerHTML">
+      {% csrf_token %}
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-9">
+          <label class="form-label" for="{{ local_search_form.query.id_for_label }}">{{ local_search_form.query.label }}</label>
+          {{ local_search_form.query }}
+          {% for error in local_search_form.query.errors %}<div class="form-text text-danger">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-12 col-md-3"><button type="submit" class="btn btn-dark w-100">검색</button></div>
+      </div>
+    </form>
+    {% include "integrations/partials/toss_market_local_search_result.html" %}
+  </div>
+</section>

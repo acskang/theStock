@@ -632,3 +632,32 @@ AuditLog에 넣을 수 있는 safe fields:
 - Step W10: UserTossAccountLink 모델 상세 설계
 - Step W11: user-scoped holdings sync 설계
 - 주문 생성/정정/취소 API는 계속 비활성 유지
+
+## 18. 2026-06 Architecture Update: 사용자별 Toss Credential 1:1 구조
+
+이 문서의 기존 권고인 "지금은 user-account mapping 모델을 만들지 않는다"는 즉시 구현을 보류하기 위한 안전 기준으로 계속 유효하다. 다만 후속 목표 구조는 다음 기준으로 보강한다.
+
+```text
+theStock user : Toss증권 security/API user credential = 1:1
+```
+
+새 아키텍처 방향:
+
+- 일반 사용자용 Toss 연동은 사용자별 credential 1:1 구조를 목표로 한다.
+- 기존 후보 `UserTossCredentialReference`는 외부 secret manager reference 중심이었으나, 현재 요구사항은 사용자가 직접 `client_id`와 `client_secret`을 입력하고 DB에는 application-level encryption으로 저장하는 구조다.
+- SQLCipher는 SQLite DB 파일 유출 방어용이다.
+- Toss credential column 보안의 핵심은 SQLCipher가 아니라 application-level encrypted field다.
+- SQL query로 조회해도 `client_id`, `client_secret`, access token, refresh token 평문이 보이면 안 된다.
+- 모델 후보는 `UserTossAccountLink` 단독이 아니라 `TossInvestCredential` 중심으로 확장한다.
+- `UserProfile`에는 Toss credential/account mapping을 넣지 않고 `integrations` 앱으로 분리한다.
+- 일반 사용자 기능에서 전역 `TOSS_INVEST_CLIENT_ID`, `TOSS_INVEST_CLIENT_SECRET`, `TOSS_INVEST_ACCOUNT_ID` 사용을 금지한다.
+- read-only scope를 우선한다.
+- 주문 생성/정정/취소 API와 자동매매는 계속 금지한다.
+
+후속 구현 전제:
+
+- 상세 기준 문서는 `docs/54_technical_architecture_and_toss_credential_design.md`다.
+- threat model, retention policy, AuditLog 설계가 선행되어야 한다.
+- application-level encrypted field 패키지 선정과 key management 검증이 필요하다.
+- `CREDENTIAL_ENCRYPTION_KEY`, `CREDENTIAL_HASH_PEPPER`, `SQLCIPHER_DATABASE_KEY`는 DB에 저장하지 않는다.
+- Toss증권 Open API의 `client_id`/`client_secret`이 사용자 개인별 credential인지 서비스 앱 단위 credential인지 최종 확인해야 한다.

@@ -6,12 +6,25 @@ function getConsultPageConfig() {
   return JSON.parse(script.textContent);
 }
 
-function getCsrfToken() {
+function getCsrfToken(config = {}) {
+  const normalizeToken = (value) => decodeURIComponent(value || "").trim().replace(/^"|"$/g, "");
+  const isValidLength = (value) => value.length === 32 || value.length === 64;
+  const configToken = normalizeToken(config.csrfToken);
+  if (isValidLength(configToken)) {
+    return configToken;
+  }
+  const metaToken = normalizeToken(document.querySelector('meta[name="csrf-token"]')?.getAttribute("content"));
+  if (isValidLength(metaToken)) {
+    return metaToken;
+  }
   const cookies = document.cookie ? document.cookie.split(";") : [];
   for (const cookie of cookies) {
     const trimmed = cookie.trim();
     if (trimmed.startsWith("csrftoken=")) {
-      return decodeURIComponent(trimmed.slice("csrftoken=".length));
+      const cookieToken = normalizeToken(trimmed.slice("csrftoken=".length));
+      if (isValidLength(cookieToken)) {
+        return cookieToken;
+      }
     }
   }
   return "";
@@ -338,7 +351,7 @@ function renderBanner(payload) {
   }
   const riskStatus = payload.risk_gate?.status;
   if (riskStatus === "CRITICAL" || riskStatus === "BLOCK") {
-    container.innerHTML = `<div class="alert alert-danger">현재 risk gate가 ${escapeHtml(riskStatus)} 상태이므로 확률보다 리스크 차단 판단을 우선 확인해야 합니다.</div>`;
+    container.innerHTML = `<div class="alert alert-danger">이 종목은 현재 악재 또는 위험 이벤트가 있어서, 단순 확률 계산으로 추가 매수를 판단하지 말고 리스크를 먼저 확인하세요.</div>`;
     return;
   }
   if (payload.probability?.scenario_type === "fallback") {
@@ -376,12 +389,16 @@ function updateHeader(payload) {
 }
 
 async function fetchConsulting(config) {
+  const csrfToken = getCsrfToken(config);
+  if (!csrfToken) {
+    throw new Error("CSRF 토큰을 확인하지 못했습니다. 화면을 새로고침해 주세요.");
+  }
   const response = await fetch(config.consultUrl, {
     method: "POST",
     credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRFToken": getCsrfToken(),
+      "X-CSRFToken": csrfToken,
     },
     body: JSON.stringify({}),
   });

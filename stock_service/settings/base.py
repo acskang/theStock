@@ -28,7 +28,8 @@ def _load_project_dotenv(dotenv_path: Path) -> None:
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
             value = value[1:-1]
 
-        os.environ.setdefault(key, value)
+        if os.environ.get(key, "") == "":
+            os.environ[key] = value
 
 
 _load_project_dotenv(BASE_DIR / ".env")
@@ -79,6 +80,7 @@ INSTALLED_APPS = [
     "decisions",
     "portfolio",
     "data_pipeline",
+    "integrations",
 ]
 
 MIDDLEWARE = [
@@ -145,6 +147,24 @@ TOSS_REQUEST_TIMEOUT_SECONDS = int(os.environ.get("TOSS_REQUEST_TIMEOUT_SECONDS"
 TOSS_MAX_RETRIES = int(os.environ.get("TOSS_MAX_RETRIES", "2"))
 TOSS_RATE_LIMIT_PER_MINUTE = int(os.environ.get("TOSS_RATE_LIMIT_PER_MINUTE", "60"))
 TOSS_ORDER_EXECUTION_ENABLED = _env_bool("TOSS_ORDER_EXECUTION_ENABLED", False)
+TOSS_USER_CREDENTIAL_UI_ENABLED = _env_bool("TOSS_USER_CREDENTIAL_UI_ENABLED", DEBUG)
+TOSS_USER_TOSS_API_CALLS_ENABLED = _env_bool("TOSS_USER_TOSS_API_CALLS_ENABLED", False)
+TOSS_USER_HOLDINGS_APPLY_ENABLED = _env_bool("TOSS_USER_HOLDINGS_APPLY_ENABLED", False)
+try:
+    TOSS_HOLDINGS_APPLY_CONFIRM_TTL_SECONDS = int(os.environ.get("TOSS_HOLDINGS_APPLY_CONFIRM_TTL_SECONDS", "600"))
+except (TypeError, ValueError):
+    TOSS_HOLDINGS_APPLY_CONFIRM_TTL_SECONDS = 600
+TOSS_INVEST_OPENAPI_BASE_URL = os.environ.get(
+    "TOSS_INVEST_OPENAPI_BASE_URL",
+    "https://openapi.tossinvest.com",
+).rstrip("/")
+TOSS_INVEST_HTTP_TIMEOUT_SECONDS = int(os.environ.get("TOSS_INVEST_HTTP_TIMEOUT_SECONDS", "10"))
+CREDENTIAL_ENCRYPTION_KEY = os.environ.get("CREDENTIAL_ENCRYPTION_KEY", "")
+CREDENTIAL_ENCRYPTION_KEY_VERSION = os.environ.get("CREDENTIAL_ENCRYPTION_KEY_VERSION", "v1")
+CREDENTIAL_ENCRYPTION_KEYS = os.environ.get("CREDENTIAL_ENCRYPTION_KEYS", "")
+CREDENTIAL_ENCRYPTION_CURRENT_VERSION = os.environ.get("CREDENTIAL_ENCRYPTION_CURRENT_VERSION", "")
+CREDENTIAL_HASH_PEPPER = os.environ.get("CREDENTIAL_HASH_PEPPER", "")
+SQLCIPHER_DATABASE_KEY = os.environ.get("SQLCIPHER_DATABASE_KEY", "")
 APP_VERSION = os.environ.get("APP_VERSION", "dev")
 APP_BUILD_SHA = os.environ.get("APP_BUILD_SHA", "-")
 READINESS_CHECK_MIGRATIONS = os.environ.get("READINESS_CHECK_MIGRATIONS", "1").lower() not in {

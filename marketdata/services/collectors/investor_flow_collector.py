@@ -3,10 +3,13 @@ from __future__ import annotations
 import contextlib
 import io
 from dataclasses import dataclass, field
+from datetime import datetime
 from datetime import timedelta
 import logging
 
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 from django.utils import timezone
 
 from marketdata.models import InvestorFlow, StockDataCollectionStatus
@@ -17,7 +20,10 @@ from stocks.models import Stock
 logger = logging.getLogger(__name__)
 
 
-INVESTOR_FLOW_SOURCE = "pykrx_auto"
+INVESTOR_FLOW_SOURCE = "investor_flow_auto"
+INVESTOR_FLOW_FALLBACK_SOURCE = "naver_investor_flow_fallback"
+NAVER_INVESTOR_FLOW_URL = "https://finance.naver.com/item/frgn.naver"
+NAVER_USER_AGENT = "Mozilla/5.0 (compatible; theStock investor flow collector)"
 
 
 @dataclass
@@ -47,15 +53,116 @@ def _load_pykrx_stock_module():
     return pykrx_stock
 
 
+def _is_krx_stock_code(stock_code: str) -> bool:
+    return len(str(stock_code)) == 6 and str(stock_code).isdigit()
+
+
 def _fetch_investor_flow_frame(stock_code: str, fromdate: str, todate: str):
+    if _is_krx_stock_code(stock_code):
+        fallback_frame = _fetch_naver_investor_flow_frame(stock_code, fromdate, todate)
+        if fallback_frame is not None and not fallback_frame.empty:
+            return fallback_frame
+    else:
+        return pd.DataFrame()
+
     pykrx_stock = _load_pykrx_stock_module()
-    return pykrx_stock.get_market_trading_value_by_date(
-        fromdate,
-        todate,
-        stock_code,
-        on="순매수",
-        freq="d",
+    buffer = io.StringIO()
+    logging_disabled_level = logging.root.manager.disable
+    try:
+        logging.disable(logging.CRITICAL)
+        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+            frame = pykrx_stock.get_market_trading_value_by_date(
+                fromdate,
+                todate,
+                stock_code,
+                on="순매수",
+                freq="d",
+            )
+    finally:
+        logging.disable(logging_disabled_level)
+    if frame is not None and not frame.empty:
+        return frame
+    return _fetch_naver_investor_flow_frame(stock_code, fromdate, todate)
+
+
+def _fetch_naver_investor_flow_frame(stock_code: str, fromdate: str, todate: str):
+    start_date = _parse_date_value(fromdate)
+    end_date = _parse_date_value(todate)
+    rows = []
+    max_pages = 20
+    for page in range(1, max_pages + 1):
+        response = requests.get(
+            NAVER_INVESTOR_FLOW_URL,
+            params={"code": stock_code, "page": page},
+            headers={"User-Agent": NAVER_USER_AGENT},
+            timeout=10,
+        )
+        response.raise_for_status()
+        response.encoding = "euc-kr"
+        page_rows = _parse_naver_investor_flow_rows(response.text)
+        if not page_rows:
+            break
+        rows.extend(
+            row for row in page_rows
+            if start_date <= row["date"] <= end_date
+        )
+        oldest_date = min(row["date"] for row in page_rows)
+        if oldest_date < start_date:
+            break
+    if not rows:
+        return pd.DataFrame()
+    return pd.DataFrame(
+        [
+            {
+                "날짜": row["date"],
+                "외국인합계": row["foreign_net_buy"],
+                "기관합계": row["institution_net_buy"],
+                "개인": row["individual_net_buy"],
+            }
+            for row in rows
+        ]
     )
+
+
+def _parse_naver_investor_flow_rows(html: str):
+    soup = BeautifulSoup(html, "html.parser")
+    flow_table = None
+    for table in soup.find_all("table", class_="type2"):
+        if "외국인" in table.get_text(" ", strip=True) and "기관" in table.get_text(" ", strip=True):
+            flow_table = table
+    if flow_table is None:
+        return []
+
+    rows = []
+    for tr in flow_table.find_all("tr"):
+        cells = [cell.get_text(" ", strip=True) for cell in tr.find_all("td")]
+        if len(cells) < 7:
+            continue
+        try:
+            row_date = _parse_date_value(cells[0])
+        except Exception:
+            continue
+        rows.append(
+            {
+                "date": row_date,
+                "institution_net_buy": _parse_int_value(cells[5]),
+                "foreign_net_buy": _parse_int_value(cells[6]),
+                # Naver frgn page does not expose individual net buy in this table.
+                "individual_net_buy": 0,
+                "program_net_buy": 0,
+            }
+        )
+    return rows
+
+
+def _parse_date_value(value):
+    normalized = normalize_date_value(value)
+    if hasattr(normalized, "isoformat") and not isinstance(normalized, str):
+        return normalized
+    clean = str(normalized or "").strip().replace(".", "-")
+    if len(clean) == 8 and clean.isdigit():
+        return datetime.strptime(clean, "%Y%m%d").date()
+    return datetime.strptime(clean, "%Y-%m-%d").date()
 
 
 def _parse_int_value(value) -> int:

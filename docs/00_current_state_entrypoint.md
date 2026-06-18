@@ -74,12 +74,20 @@ fallback provider는 다음 목적을 위해 유지한다.
 
 Toss API Key, Secret Key, Access Token, 계좌번호는 문서, Git, 테스트 fixture에 저장하지 않는다. `.env.example`에는 변수명만 남기고 실제 값은 운영 서버의 `.env` 또는 secret manager에서 관리한다.
 
+2026-06 기술 아키텍처 보강 기준에서는 일반 사용자 기능의 최종 방향을 사용자별 Toss credential 1:1 구조로 둔다. 전역 `.env` Toss credential은 staff-only 운영 점검 또는 전환 기간에만 제한적으로 유지할 수 있으며, 일반 사용자 데이터 조회에는 사용하지 않는다. `.env` 파일 자체는 삭제하지 않고 `DJANGO_SECRET_KEY`, DB 설정, `CREDENTIAL_ENCRYPTION_KEY`, `CREDENTIAL_HASH_PEPPER`, `SQLCIPHER_DATABASE_KEY` 같은 운영 secret 관리 수단으로 유지한다.
+
+SQLite 환경에서 SQLCipher는 DB 파일 유출 방어용 보조 계층으로 검토한다. Toss credential column 보안의 핵심은 SQLCipher가 아니라 application-level encrypted field이며, SQL query 결과에서도 `client_id`, `client_secret`, token 평문이 보이면 안 된다. 상세 기준은 `docs/54_technical_architecture_and_toss_credential_design.md`를 따른다.
+
+`docs/54_technical_architecture_and_toss_credential_design.md`는 최신 기술 아키텍처 기준 문서이고, `docs/55_security_foundation_research_report.md`는 Phase 1 보안 기반 조사 보고서다. docs/55의 service-layer encryption, SQLCipher 역할 분리, Toss 인증 모델 Open Question 결론은 docs/54에 반영한다.
+
 상세 정책은 다음 문서를 기준으로 한다.
 
 ```text
 docs/19_toss_openapi_first_provider_policy.md
 docs/20_toss_openapi_mapping_table.md
 docs/21_toss_openapi_security_checklist.md
+docs/54_technical_architecture_and_toss_credential_design.md
+docs/55_security_foundation_research_report.md
 ```
 
 ---
@@ -120,6 +128,7 @@ docs/18_privacy_and_financial_data_policy.md
 docs/19_toss_openapi_first_provider_policy.md
 docs/20_toss_openapi_mapping_table.md
 docs/21_toss_openapi_security_checklist.md
+docs/54_technical_architecture_and_toss_credential_design.md
 docs/api_reference.md
 docs/check-list.txt
 ```
@@ -550,6 +559,7 @@ docs/15_operations_runbook.md
 docs/16_observability_and_alerting_design.md
 docs/17_openapi_schema_design.md
 docs/18_privacy_and_financial_data_policy.md
+docs/54_technical_architecture_and_toss_credential_design.md
 ```
 
 ---

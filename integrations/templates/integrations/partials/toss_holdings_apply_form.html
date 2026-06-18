@@ -1,0 +1,62 @@
+<section class="border border-danger rounded p-3" aria-label="보유종목 실제 반영">
+  <div class="alert alert-danger" role="alert">
+    <div class="fw-bold mb-1">UserHolding 실제 반영</div>
+    <div>create/update만 실제 UserHolding에 반영합니다.</div>
+    <div>삭제 후보는 삭제하지 않습니다.</div>
+    <div>주문 실행이 아니며 theStock UserHolding 데이터만 변경합니다.</div>
+  </div>
+
+  <dl class="row small mb-3">
+    <dt class="col-6 col-md-3">create</dt>
+    <dd class="col-6 col-md-3">{{ holdings_dry_run_plan.create_count }}</dd>
+    <dt class="col-6 col-md-3">update</dt>
+    <dd class="col-6 col-md-3">{{ holdings_dry_run_plan.update_count }}</dd>
+    <dt class="col-6 col-md-3">삭제 후보</dt>
+    <dd class="col-6 col-md-3">{{ holdings_dry_run_plan.remove_candidate_count }} ignored</dd>
+    <dt class="col-6 col-md-3">symbol_filter</dt>
+    <dd class="col-6 col-md-3">{{ holdings_dry_run_plan.symbol_filter|default:"전체" }}</dd>
+  </dl>
+
+  <form method="post" action="{% url 'integrations:toss_holdings_apply' %}"
+        hx-post="{% url 'integrations:toss_holdings_apply' %}"
+        hx-target="#toss-holdings-dry-run-panel"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+    {{ holdings_apply_form.confirmation_token }}
+    {% if holdings_apply_form.non_field_errors %}
+      <div class="alert alert-danger" role="alert">{{ holdings_apply_form.non_field_errors }}</div>
+    {% endif %}
+    <div class="row g-3">
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="{{ holdings_apply_form.password.id_for_label }}">
+          {{ holdings_apply_form.password.label }}
+        </label>
+        {{ holdings_apply_form.password }}
+        {% for error in holdings_apply_form.password.errors %}
+          <div class="form-text text-danger">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="{{ holdings_apply_form.confirmation_text.id_for_label }}">
+          {{ holdings_apply_form.confirmation_text.label }}
+        </label>
+        {{ holdings_apply_form.confirmation_text }}
+        {% for error in holdings_apply_form.confirmation_text.errors %}
+          <div class="form-text text-danger">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="form-check mt-md-4">
+          {{ holdings_apply_form.confirm }}
+          <label class="form-check-label" for="{{ holdings_apply_form.confirm.id_for_label }}">
+            {{ holdings_apply_form.confirm.label }}
+          </label>
+          {% for error in holdings_apply_form.confirm.errors %}
+            <div class="form-text text-danger">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-danger mt-3">create/update 실제 반영</button>
+  </form>
+</section>

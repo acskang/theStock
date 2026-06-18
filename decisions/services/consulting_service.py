@@ -191,7 +191,7 @@ def _build_probability_summary(scenario_items):
 
 def _build_probability_fallback_summary(base_decision, risk_gate_result, data_quality_result):
     if risk_gate_result.status in {"CRITICAL", "BLOCK"}:
-        headline = "확률 엔진을 생략했고, 현재는 risk gate가 우선이라 확률 해석보다 리스크 차단이 중요합니다."
+        headline = "이 종목은 현재 악재 또는 위험 이벤트가 있어서, 단순 확률 계산으로 추가 매수를 판단하지 말고 리스크를 먼저 확인하세요."
     elif data_quality_result.label in {"낮음", "매우 낮음"}:
         headline = "확률 엔진을 생략했고, 데이터 품질이 낮아 점수·리스크·시장 조건 중심으로 해석했습니다."
     else:

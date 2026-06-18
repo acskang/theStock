@@ -1,0 +1,18 @@
+{% extends "portfolio/base.html" %}
+
+{% block title %}{% block analysis_title %}손익 분석{% endblock %} - theStock{% endblock %}
+{% block page_title %}손익 분석{% endblock %}
+
+{% block content %}
+<section class="mb-4">
+  <p class="text-uppercase text-secondary small mb-1">Profit / Loss Analysis</p>
+  <h1 class="h3 mb-2">{% block analysis_heading %}손익 분석{% endblock %}</h1>
+  <p class="text-secondary mb-3">
+    이 영역은 거래 원장과 가격 데이터를 기반으로 한 read-only 분석 화면입니다.
+    주문 실행, 매수, 매도, 정정, 취소 기능은 제공하지 않습니다.
+  </p>
+  {% include "portfolio/analysis/partials/_analysis_nav.html" %}
+</section>
+
+{% block analysis_content %}{% endblock %}
+{% endblock %}

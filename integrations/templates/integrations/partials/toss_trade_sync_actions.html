@@ -1,0 +1,39 @@
+<section class="card mb-3">
+  <div class="card-body">
+    <h3 class="h5 fw-bold mb-3">동기화 실행</h3>
+    {% if not toss_api_calls_enabled %}
+      <div class="alert alert-warning mb-0">현재 Toss API 조회 기능이 비활성화되어 있습니다.</div>
+    {% elif safe_status.status != "active" %}
+      <div class="alert alert-warning mb-0">Toss credential 연결 확인을 먼저 완료해 주세요.</div>
+    {% else %}
+      <div class="row g-3">
+        <div class="col-12 col-lg-6">
+          <form method="post" action="{{ trade_sync_run_url }}" hx-post="{{ trade_sync_run_url }}" hx-target="#toss-trade-sync-panel" hx-swap="outerHTML" class="border rounded p-3 h-100">
+            {% csrf_token %}
+            {{ initial_form.mode }}
+            <h4 class="h6 fw-bold">최초 전체 거래 동기화</h4>
+            <p class="small text-muted">지금까지의 모든 CLOSED 주문을 cursor 끝까지 조회합니다.</p>
+            <div class="form-check mb-3">
+              {{ initial_form.confirm }}
+              <label class="form-check-label" for="{{ initial_form.confirm.id_for_label }}">{{ initial_form.confirm.label }}</label>
+            </div>
+            <button type="submit" class="btn btn-dark">최초 전체 동기화</button>
+          </form>
+        </div>
+        <div class="col-12 col-lg-6">
+          <form method="post" action="{{ trade_sync_run_url }}" hx-post="{{ trade_sync_run_url }}" hx-target="#toss-trade-sync-panel" hx-swap="outerHTML" class="border rounded p-3 h-100">
+            {% csrf_token %}
+            {{ incremental_form.mode }}
+            <h4 class="h6 fw-bold">이후 거래 증분 동기화</h4>
+            <p class="small text-muted">마지막 성공 orderedAt 기준 2일 overlap으로 다시 조회합니다.</p>
+            <div class="form-check mb-3">
+              {{ incremental_form.confirm }}
+              <label class="form-check-label" for="{{ incremental_form.confirm.id_for_label }}">{{ incremental_form.confirm.label }}</label>
+            </div>
+            <button type="submit" class="btn btn-outline-dark">증분 동기화</button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</section>

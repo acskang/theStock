@@ -1,0 +1,54 @@
+<section aria-label="Toss 계좌 거래 정보 결과">
+  <div class="row g-2 mb-3">
+    <div class="col-12 col-md-4">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">KRW 현금 매수 가능 금액</div>
+        <div class="fw-bold">{{ account_trading_info.krw_buying_power.cash_buying_power|default:"-" }} KRW</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">USD 현금 매수 가능 금액</div>
+        <div class="fw-bold">{{ account_trading_info.usd_buying_power.cash_buying_power|default:"-" }} USD</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">대표 계좌</div>
+        <div class="fw-bold">{{ account_trading_info.account_masked|default:"-" }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="small text-muted mb-3">
+    조회 시각: {{ account_trading_info.fetched_at }}
+    · 실제 주문 환율, 세금, 기타 비용과 차이가 있을 수 있습니다.
+  </div>
+
+  {% if account_trading_info.commissions %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">시장</th>
+            <th scope="col">수수료율</th>
+            <th scope="col">적용 시작일</th>
+            <th scope="col">적용 종료일</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for commission in account_trading_info.commissions %}
+            <tr>
+              <td>{{ commission.market_label }}</td>
+              <td>{{ commission.commission_rate|default:"-" }}</td>
+              <td>{{ commission.start_date|default:"-" }}</td>
+              <td>{{ commission.end_date|default:"제한 없음" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-info mb-0" role="alert">조회된 매매 수수료 정보가 없습니다.</div>
+  {% endif %}
+</section>

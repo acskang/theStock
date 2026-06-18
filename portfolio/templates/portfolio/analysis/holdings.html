@@ -1,0 +1,52 @@
+{% extends "portfolio/analysis/base.html" %}
+
+{% block analysis_title %}현재 보유 평가{% endblock %}
+{% block analysis_heading %}현재 보유 평가{% endblock %}
+
+{% block analysis_content %}
+<section class="row g-3 mb-4" aria-label="보유 평가 KPI">
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">보유 종목 수</div><div class="fs-5 fw-bold">{{ holdings_summary.count }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 장부가</div><div class="fs-5 fw-bold">{{ holdings_summary.book_value }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 평가금액</div><div class="fs-5 fw-bold">{{ holdings_summary.market_value }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">총 평가손익</div><div class="fs-5 fw-bold {{ holdings_summary.tone_class }}">{{ holdings_summary.profit }} ({{ holdings_summary.profit_rate }}%)</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">수익 종목</div><div class="fs-5 fw-bold text-success">{{ holdings_summary.profit_count }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">손실 종목</div><div class="fs-5 fw-bold text-danger">{{ holdings_summary.loss_count }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">가격 미확인</div><div class="fs-5 fw-bold">{{ holdings_summary.price_error_count }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="small text-secondary">조회 기준</div><div class="fw-semibold">현재가 포함</div><div class="small text-secondary">{{ generated_at }}</div></div></div>
+</section>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-sm-4 col-lg-3">
+    <label class="form-label small" for="holding-status">상태 필터</label>
+    <select id="holding-status" name="status" class="form-select">
+      {% for value, label in holding_status_options %}
+        <option value="{{ value }}"{% if selected_status == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-5 col-lg-4">
+    <label class="form-label small" for="holding-sort">정렬</label>
+    <select id="holding-sort" name="sort" class="form-select">
+      {% for value, label in holding_sort_options %}
+        <option value="{{ value }}"{% if selected_sort == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-3 col-lg-2">
+    <button class="btn btn-primary w-100" type="submit">적용</button>
+  </div>
+</form>
+
+<section class="card">
+  <div class="card-body">
+    <div class="d-flex justify-content-between gap-3 flex-wrap mb-3">
+      <div>
+        <h2 class="h5 mb-1">보유 종목 평가</h2>
+        <p class="text-secondary small mb-0">평가손익은 현재 보유 중인 미확정 손익입니다. 실현손익과 회고 분석은 별도 화면에서 확인합니다.</p>
+      </div>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'transaction_list' %}">거래 원장</a>
+    </div>
+    {% include "portfolio/analysis/partials/_holdings_table.html" with holdings=holdings %}
+  </div>
+</section>
+{% endblock %}

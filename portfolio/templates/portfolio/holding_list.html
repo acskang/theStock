@@ -16,10 +16,111 @@
       </p>
     </div>
     <div class="consult-hero-actions">
-      <a class="btn btn-outline-dark" href="{% url 'analysis_view' %}">Legacy 분석 보기</a>
+      <a class="btn btn-outline-dark" href="{% url 'profit_loss_dashboard' %}">손익 분석 보기</a>
+      {% if active_holdings %}
+      <button
+        type="button"
+        class="btn btn-dark"
+        data-budget-panel-toggle
+        aria-controls="holding-budget-settings"
+        aria-expanded="false"
+      >
+        추가예산설정
+      </button>
+      {% endif %}
     </div>
   </div>
 </section>
+
+{% if active_holdings %}
+<section id="holding-budget-settings" class="mb-5" data-budget-settings hidden>
+  <div class="card consult-card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+        <div>
+          <p class="consult-eyebrow mb-1">Holding Budget Settings</p>
+          <h2 class="h4 mb-2">보유종목 추가 예산 설정</h2>
+          <p class="text-secondary small mb-0">
+            전체 추가 예산을 입력하면 활성 보유 종목 {{ active_holdings|length }}개에 같은 금액으로 배분합니다.
+            종목별 금액을 바꾸면 전체 예산과 배정 비중이 다시 계산됩니다.
+          </p>
+        </div>
+        <div class="text-end small">
+          <div class="consult-metric-label">현재 저장 총액</div>
+          <div class="consult-metric-value" data-budget-total-display>{{ total_additional_budget_display }}</div>
+        </div>
+      </div>
+
+      <form method="post" action="{% url 'consulting_holding_budget_update' %}" class="budget-settings-form">
+        {% csrf_token %}
+        <div class="row g-3 align-items-end mb-3">
+          <div class="col-12 col-lg-5">
+            <label class="form-label" for="total-additional-budget">전체 추가 예산</label>
+            <input
+              class="form-control"
+              id="total-additional-budget"
+              data-budget-total-input
+              name="total_additional_budget"
+              inputmode="decimal"
+              autocomplete="off"
+              value="{{ total_additional_budget|floatformat:0 }}"
+            >
+            <div class="form-text">입력 즉시 n분의 1로 종목별 배정액을 채웁니다.</div>
+          </div>
+          <div class="col-12 col-lg-auto">
+            <button type="button" class="btn btn-outline-dark" data-budget-distribute>전액 균등 배분</button>
+          </div>
+          <div class="col-12 col-lg-auto">
+            <button type="submit" class="btn btn-dark">추가 예산 저장</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>종목</th>
+                <th class="text-end">현재 손익률</th>
+                <th class="text-end">추가 예산</th>
+                <th class="text-end">전체 대비 비중</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in active_holdings %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ item.holding.stock.name }}</div>
+                  <div class="small text-secondary">{{ item.holding.stock.market }}</div>
+                </td>
+                <td class="text-end">
+                  <span class="{% if item.loss_rate and item.loss_rate < 0 %}text-danger{% elif item.loss_rate and item.loss_rate > 0 %}text-success{% endif %}">
+                    {{ item.loss_rate_display }}
+                  </span>
+                </td>
+                <td>
+                  <input
+                    class="form-control text-end"
+                    name="holding_budget_{{ item.holding.id }}"
+                    data-budget-item-input
+                    inputmode="decimal"
+                    autocomplete="off"
+                    value="{{ item.holding.max_additional_budget|floatformat:0 }}"
+                    aria-label="{{ item.holding.stock.name }} 추가 예산"
+                  >
+                </td>
+                <td class="text-end">
+                  <span class="fw-semibold" data-budget-share>0%</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+{% endif %}
 
 <section class="mb-5">
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -36,7 +137,9 @@
             <div>
               <p class="consult-eyebrow mb-1">{{ item.holding.stock.market }}</p>
               <h3 class="h5 mb-1">{{ item.holding.stock.name }}</h3>
-              <div class="text-secondary small">{{ item.holding.stock.code }}{% if item.holding.stock.sector %} · {{ item.holding.stock.sector }}{% endif %}</div>
+              {% if item.holding.stock.sector %}
+              <div class="text-secondary small">{{ item.holding.stock.sector }}</div>
+              {% endif %}
             </div>
             <span class="badge rounded-pill text-bg-success">활성</span>
           </div>
@@ -105,7 +208,7 @@
       <article class="card consult-card holding-card holding-card-muted h-100">
         <div class="card-body d-flex justify-content-between align-items-center gap-3">
           <div>
-            <div class="fw-semibold">{{ item.holding.stock.name }} <span class="text-secondary">({{ item.holding.stock.code }})</span></div>
+            <div class="fw-semibold">{{ item.holding.stock.name }}</div>
             <div class="small text-secondary">청산 또는 비활성 상태로 평가 API는 실행되지 않습니다.</div>
           </div>
           <a class="btn btn-outline-secondary" href="{% url 'holding_consult_page' item.holding.id %}">상세 보기</a>
@@ -116,4 +219,95 @@
   </div>
 </section>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var root = document.querySelector("[data-budget-settings]");
+    if (!root) {
+      return;
+    }
+
+    var totalInput = root.querySelector("[data-budget-total-input]");
+    var totalDisplay = root.querySelector("[data-budget-total-display]");
+    var distributeButton = root.querySelector("[data-budget-distribute]");
+    var toggleButton = document.querySelector("[data-budget-panel-toggle]");
+    var itemInputs = Array.prototype.slice.call(root.querySelectorAll("[data-budget-item-input]"));
+    var shareLabels = Array.prototype.slice.call(root.querySelectorAll("[data-budget-share]"));
+
+    function parseAmount(value) {
+      var normalized = String(value || "").replace(/,/g, "").trim();
+      if (!normalized) {
+        return 0;
+      }
+      var number = Number(normalized);
+      return Number.isFinite(number) && number > 0 ? number : 0;
+    }
+
+    function formatAmount(value) {
+      return Math.round(value).toLocaleString("ko-KR");
+    }
+
+    function formatCurrency(value) {
+      return formatAmount(value) + "원";
+    }
+
+    function recalculateFromItems() {
+      var total = itemInputs.reduce(function (sum, input) {
+        return sum + parseAmount(input.value);
+      }, 0);
+      totalInput.value = total ? formatAmount(total) : "0";
+      totalDisplay.textContent = formatCurrency(total);
+      itemInputs.forEach(function (input, index) {
+        var amount = parseAmount(input.value);
+        var share = total > 0 ? (amount / total) * 100 : 0;
+        shareLabels[index].textContent = share.toFixed(1) + "%";
+      });
+    }
+
+    function distributeTotal() {
+      var total = parseAmount(totalInput.value);
+      var count = itemInputs.length;
+      var perItem = count ? Math.floor(total / count) : 0;
+      var remainder = count ? Math.round(total - (perItem * count)) : 0;
+      itemInputs.forEach(function (input, index) {
+        input.value = formatAmount(perItem + (index === 0 ? remainder : 0));
+      });
+      recalculateFromItems();
+    }
+
+    if (distributeButton) {
+      distributeButton.addEventListener("click", distributeTotal);
+    }
+    if (toggleButton) {
+      toggleButton.addEventListener("click", function () {
+        var willOpen = root.hasAttribute("hidden");
+        if (willOpen) {
+          root.removeAttribute("hidden");
+          toggleButton.setAttribute("aria-expanded", "true");
+          toggleButton.textContent = "추가예산설정 닫기";
+          root.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          root.setAttribute("hidden", "");
+          toggleButton.setAttribute("aria-expanded", "false");
+          toggleButton.textContent = "추가예산설정";
+        }
+      });
+    }
+    if (totalInput) {
+      totalInput.addEventListener("change", distributeTotal);
+      totalInput.addEventListener("blur", distributeTotal);
+    }
+    itemInputs.forEach(function (input) {
+      input.addEventListener("input", recalculateFromItems);
+      input.addEventListener("blur", function () {
+        input.value = formatAmount(parseAmount(input.value));
+        recalculateFromItems();
+      });
+    });
+
+    recalculateFromItems();
+  }());
+</script>
 {% endblock %}

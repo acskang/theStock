@@ -34,13 +34,6 @@ def run_daily_pipeline(
             all_stocks=all_stocks,
             dry_run=dry_run,
         ),
-        "investor_flows": ingest_investor_flows(
-            provider_name=provider_name,
-            stock_codes=stock_codes,
-            days=investor_flow_days,
-            all_stocks=all_stocks,
-            dry_run=dry_run,
-        ),
         "market_indices": ingest_market_indices(
             provider_name=provider_name,
             codes=market_index_codes,

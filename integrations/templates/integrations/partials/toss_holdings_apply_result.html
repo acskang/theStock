@@ -1,0 +1,75 @@
+<section class="border rounded p-3" aria-label="보유종목 반영 결과">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <div>
+      <h4 class="h6 fw-bold mb-1">UserHolding 반영 결과</h4>
+      <p class="text-muted mb-0">
+        삭제 후보는 삭제되지 않았습니다. 동일 조건으로 dry-run을 다시 실행해 결과를 확인하세요.
+      </p>
+    </div>
+    <span class="badge text-bg-success">applied</span>
+  </div>
+
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md-2">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">created</div>
+        <div class="fw-bold">{{ holdings_apply_result.created_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">updated</div>
+        <div class="fw-bold">{{ holdings_apply_result.updated_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">unchanged</div>
+        <div class="fw-bold">{{ holdings_apply_result.unchanged_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">삭제 후보 무시</div>
+        <div class="fw-bold">{{ holdings_apply_result.ignored_remove_candidate_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="border rounded p-2 h-100">
+        <div class="small text-muted">skipped</div>
+        <div class="fw-bold">{{ holdings_apply_result.skipped_count }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="small text-muted mb-3">applied_at: {{ holdings_apply_result.applied_at }}</div>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th scope="col">종목</th>
+          <th scope="col">상태</th>
+          <th scope="col">이전 수량</th>
+          <th scope="col">이후 수량</th>
+          <th scope="col">이전 평단</th>
+          <th scope="col">이후 평단</th>
+          <th scope="col">메시지</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in holdings_apply_result.items %}
+          <tr>
+            <td class="fw-semibold">{{ item.symbol }}</td>
+            <td>{{ item.status }}</td>
+            <td>{{ item.before_quantity|default:"-" }}</td>
+            <td>{{ item.after_quantity|default:"-" }}</td>
+            <td>{{ item.before_average_price|default:"-" }}</td>
+            <td>{{ item.after_average_price|default:"-" }}</td>
+            <td>{{ item.safe_message|default:"-" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

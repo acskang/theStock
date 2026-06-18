@@ -1,0 +1,41 @@
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle mb-0">
+    <thead>
+      <tr>
+        <th>종목</th>
+        <th>보유수량</th>
+        <th>평균매수가</th>
+        <th>현재가</th>
+        <th>장부가</th>
+        <th>평가금액</th>
+        <th>평가손익</th>
+        <th>수익률</th>
+        <th>상태</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in holdings %}
+        <tr>
+          <td>
+            <div class="fw-semibold">{{ item.stock_name }}</div>
+            {% if item.ticker %}<div class="small text-secondary">{{ item.ticker }}</div>{% endif %}
+          </td>
+          <td>{{ item.quantity }}</td>
+          <td>{{ item.avg_price }}</td>
+          <td>{{ item.current_price }}</td>
+          <td>{{ item.book_value }}</td>
+          <td>{{ item.market_value }}</td>
+          <td class="{{ item.tone_class }}">{{ item.profit }} <span class="small">({{ item.result_label }})</span></td>
+          <td class="{{ item.tone_class }}">{{ item.profit_rate }}%</td>
+          <td>{{ item.price_status }}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'buy_review' %}?stock={{ item.stock_name|urlencode }}">회고</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="10" class="text-secondary">현재 보유 중인 종목이 없습니다.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

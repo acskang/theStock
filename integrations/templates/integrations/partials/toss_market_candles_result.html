@@ -1,0 +1,30 @@
+<section aria-label="캔들 조회 결과">
+  <div class="small text-muted mb-2">
+    {{ candle_page.symbol }} · {{ candle_page.interval }} · {{ candle_page.count }}개 · adjusted={{ candle_page.adjusted|yesno:"true,false" }} · 조회 {{ candle_page.fetched_at }}
+  </div>
+  {% if candle_page.candles %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>시각</th><th>시가</th><th>고가</th><th>저가</th><th>종가</th><th>거래량</th><th>통화</th></tr></thead>
+        <tbody>
+          {% for candle in candle_page.candles %}
+            <tr><td>{{ candle.timestamp|default:"-" }}</td><td>{{ candle.open_price|default:"-" }}</td><td>{{ candle.high_price|default:"-" }}</td><td>{{ candle.low_price|default:"-" }}</td><td>{{ candle.close_price|default:"-" }}</td><td>{{ candle.volume|default:"-" }}</td><td>{{ candle.currency|default:"-" }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-info">조회된 캔들이 없습니다.</div>
+  {% endif %}
+  {% if candle_page.next_before %}
+    <form method="post" action="{{ candles_url }}" hx-post="{{ candles_url }}" hx-target="#toss-market-candles" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="symbol" value="{{ candle_page.symbol }}">
+      <input type="hidden" name="interval" value="{{ candle_page.interval }}">
+      <input type="hidden" name="count" value="{{ candle_page.count }}">
+      {% if candle_page.adjusted %}<input type="hidden" name="adjusted" value="on">{% endif %}
+      <input type="hidden" name="before" value="{{ candle_page.next_before }}">
+      <button type="submit" class="btn btn-outline-dark">이전 캔들 더 보기</button>
+    </form>
+  {% endif %}
+</section>

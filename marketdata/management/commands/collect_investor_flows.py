@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "pykrx 기반으로 InvestorFlow 데이터를 자동 수집합니다."
+    help = "InvestorFlow 데이터를 자동 수집합니다."
 
     def add_arguments(self, parser):
         parser.add_argument("--use-data-pipeline", action="store_true")
@@ -29,7 +29,7 @@ class Command(BaseCommand):
             extra={
                 "event": "command_start",
                 "command": "collect_investor_flows",
-                "source": "pykrx",
+                "source": "investor_flow_auto",
                 "stock_code": options.get("stock_code") or "-",
             },
         )
@@ -53,7 +53,7 @@ class Command(BaseCommand):
             extra={
                 "event": "command_complete",
                 "command": "collect_investor_flows",
-                "source": "pykrx",
+                "source": "investor_flow_auto",
                 "stock_code": options.get("stock_code") or "-",
             },
         )
@@ -63,7 +63,7 @@ class Command(BaseCommand):
                 extra={
                     "event": "command_warning",
                     "command": "collect_investor_flows",
-                    "source": "pykrx",
+                    "source": "investor_flow_auto",
                     "stock_code": options.get("stock_code") or "-",
                 },
             )

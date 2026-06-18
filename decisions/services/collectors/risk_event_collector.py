@@ -13,6 +13,7 @@ import zipfile
 
 from django.conf import settings
 from django.utils import timezone
+from bs4 import BeautifulSoup
 
 from decisions.models import RiskEvent
 from decisions.services.importers.risk_event_import_service import build_risk_event_source_key
@@ -26,7 +27,11 @@ logger = logging.getLogger(__name__)
 OPENDART_CORP_CODE_URL = "https://opendart.fss.or.kr/api/corpCode.xml"
 OPENDART_LIST_URL = "https://opendart.fss.or.kr/api/list.json"
 OPENDART_DISCLOSURE_URL = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo={receipt_no}"
+NAVER_NOTICE_URL = "https://finance.naver.com/item/news_notice.naver"
+NAVER_NOTICE_READ_BASE_URL = "https://finance.naver.com"
+NAVER_USER_AGENT = "Mozilla/5.0 (compatible; theStock risk event collector)"
 RISK_EVENT_SOURCE = "opendart_auto"
+RISK_EVENT_FALLBACK_SOURCE = "naver_notice_auto"
 AUTO_ACTIVE_WINDOWS = {
     RiskEvent.RISK_CRITICAL: 365,
     RiskEvent.RISK_HIGH: 180,
@@ -58,6 +63,13 @@ def _load_json(url: str):
     with urllib.request.urlopen(url, timeout=20) as response:
         payload = response.read().decode("utf-8")
     return json.loads(payload)
+
+
+def _load_text(url: str, *, encoding="utf-8"):
+    request = urllib.request.Request(url, headers={"User-Agent": NAVER_USER_AGENT})
+    with urllib.request.urlopen(request, timeout=20) as response:
+        payload = response.read()
+    return payload.decode(encoding, "ignore")
 
 
 @lru_cache(maxsize=4)
@@ -141,6 +153,10 @@ def _parse_receipt_date(value: str):
     return datetime.strptime(value, "%Y%m%d").date()
 
 
+def _parse_notice_date(value: str):
+    return datetime.strptime(value.strip().replace(".", "-"), "%Y-%m-%d").date()
+
+
 def _should_auto_event_be_active(event_date, risk_level: str, today=None):
     current_date = today or timezone.localdate()
     window_days = AUTO_ACTIVE_WINDOWS.get(risk_level, 60)
@@ -190,37 +206,180 @@ def _build_risk_event_defaults(stock, disclosure):
     }
 
 
+def _fetch_naver_notice_items(stock, bgn_de: str, end_de: str, max_pages=20):
+    start_date = _parse_receipt_date(bgn_de)
+    end_date = _parse_receipt_date(end_de)
+    items = []
+    for page in range(1, max_pages + 1):
+        url = f"{NAVER_NOTICE_URL}?{urllib.parse.urlencode({'code': stock.code, 'page': page})}"
+        html = _load_text(url, encoding="euc-kr")
+        page_items = _parse_naver_notice_items(stock, html)
+        if not page_items:
+            break
+        items.extend(
+            item for item in page_items
+            if start_date <= item["event_date"] <= end_date
+        )
+        oldest_date = min(item["event_date"] for item in page_items)
+        if oldest_date < start_date:
+            break
+    return items
+
+
+def _parse_naver_notice_items(stock, html: str):
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.find("table", class_="type6")
+    if table is None:
+        return []
+
+    items = []
+    for row in table.find_all("tr"):
+        cells = [cell.get_text(" ", strip=True) for cell in row.find_all("td")]
+        if len(cells) < 3:
+            continue
+        title = cells[0].strip()
+        if not title or title == "조회 결과가 없습니다.":
+            continue
+        try:
+            event_date = _parse_notice_date(cells[2])
+        except Exception:
+            continue
+        link = row.find("a")
+        href = (link.get("href") or "").strip() if link else ""
+        items.append(
+            {
+                "title": title,
+                "provider": cells[1].strip(),
+                "event_date": event_date,
+                "url": urllib.parse.urljoin(NAVER_NOTICE_READ_BASE_URL, href) if href else "",
+            }
+        )
+    return items
+
+
+def _build_naver_risk_event_defaults(stock, notice):
+    classification = classify_dart_risk_event(notice["title"])
+    if classification is None:
+        return None
+
+    event_type, risk_level = classification
+    source_key = build_risk_event_source_key(
+        stock_code=stock.code,
+        event_date=notice["event_date"],
+        event_type=event_type,
+        title=notice["title"],
+    )
+    return {
+        "source_key": f"naver_notice:{source_key}",
+        "defaults": {
+            "stock": stock,
+            "event_type": event_type,
+            "title": notice["title"],
+            "source": RISK_EVENT_FALLBACK_SOURCE,
+            "url": notice["url"],
+            "event_date": notice["event_date"],
+            "risk_level": risk_level,
+            "description": f"정보제공={notice['provider']}".strip(),
+            "is_active": _should_auto_event_be_active(notice["event_date"], risk_level),
+        },
+    }
+
+
+def _collect_naver_risk_events_for_stock(stock, bgn_de: str, end_de: str, *, dry_run=False):
+    notices = _fetch_naver_notice_items(stock, bgn_de, end_de)
+    relevant_items = []
+    for notice in notices:
+        built = _build_naver_risk_event_defaults(stock, notice)
+        if built is not None:
+            relevant_items.append(built)
+
+    created = 0
+    updated = 0
+    if not dry_run:
+        _refresh_auto_risk_event_activity(stock)
+    for item in relevant_items:
+        if dry_run:
+            if RiskEvent.objects.filter(source_key=item["source_key"]).exists():
+                updated += 1
+            else:
+                created += 1
+            continue
+
+        _, was_created = RiskEvent.objects.update_or_create(
+            source_key=item["source_key"],
+            defaults=item["defaults"],
+        )
+        if was_created:
+            created += 1
+        else:
+            updated += 1
+
+    return {
+        "created": created,
+        "updated": updated,
+        "matched": len(relevant_items),
+        "notices": len(notices),
+    }
+
+
 def collect_risk_events(*, stock_code=None, days=365, all_stocks=False, dry_run=False):
     report = RiskEventCollectionReport()
     stocks = list(_get_target_stocks(stock_code=stock_code, all_stocks=all_stocks))
     report.target_count = len(stocks)
 
+    bgn_de = (timezone.localdate() - timedelta(days=max(days - 1, 0))).strftime("%Y%m%d")
+    end_de = timezone.localdate().strftime("%Y%m%d")
+
     api_key = getattr(settings, "OPENDART_API_KEY", "").strip()
     if not api_key:
-        report.error_targets = len(stocks)
-        report.warnings.append("OPENDART_API_KEY 가 설정되지 않아 리스크 이벤트 자동 수집을 실행할 수 없습니다.")
-        logger.error(
-            "Risk event collection skipped because API key is missing",
+        logger.warning(
+            "Risk event collection uses fallback source because API key is missing",
             extra={
-                "event": "risk_event_collect_config_error",
-                "source": RISK_EVENT_SOURCE,
+                "event": "risk_event_collect_fallback",
+                "source": RISK_EVENT_FALLBACK_SOURCE,
                 "error_type": "MissingApiKey",
             },
         )
-        if not dry_run:
-            for stock in stocks:
+        for stock in stocks:
+            try:
+                fallback_result = _collect_naver_risk_events_for_stock(stock, bgn_de, end_de, dry_run=dry_run)
+            except Exception as exc:
+                report.error_targets += 1
+                report.warnings.append(f"{stock.code} {stock.name}: 리스크 이벤트 보조 수집에 실패했습니다. ({exc})")
+                if not dry_run:
+                    record_collection_status(
+                        stock=stock,
+                        data_type=StockDataCollectionStatus.TYPE_RISK_EVENT,
+                        status=StockDataCollectionStatus.STATUS_ERROR,
+                        source=RISK_EVENT_FALLBACK_SOURCE,
+                        row_count=0,
+                        message=str(exc),
+                    )
+                continue
+
+            report.created_rows += fallback_result["created"]
+            report.updated_rows += fallback_result["updated"]
+            if fallback_result["matched"] == 0:
+                report.empty_targets += 1
+                if not dry_run:
+                    record_collection_status(
+                        stock=stock,
+                        data_type=StockDataCollectionStatus.TYPE_RISK_EVENT,
+                        status=StockDataCollectionStatus.STATUS_EMPTY,
+                        source=RISK_EVENT_FALLBACK_SOURCE,
+                        row_count=0,
+                        message="매칭된 위험 공시가 없습니다.",
+                    )
+            elif not dry_run:
                 record_collection_status(
                     stock=stock,
                     data_type=StockDataCollectionStatus.TYPE_RISK_EVENT,
-                    status=StockDataCollectionStatus.STATUS_ERROR,
-                    source=RISK_EVENT_SOURCE,
-                    row_count=0,
-                    message="OPENDART_API_KEY 미설정",
+                    status=StockDataCollectionStatus.STATUS_SUCCESS,
+                    source=RISK_EVENT_FALLBACK_SOURCE,
+                    row_count=fallback_result["matched"],
+                    message="",
                 )
         return report
-
-    bgn_de = (timezone.localdate() - timedelta(days=max(days - 1, 0))).strftime("%Y%m%d")
-    end_de = timezone.localdate().strftime("%Y%m%d")
 
     try:
         corp_code_map = get_dart_corp_code_map(api_key)
@@ -250,25 +409,44 @@ def collect_risk_events(*, stock_code=None, days=365, all_stocks=False, dry_run=
     for stock in stocks:
         corp_code = corp_code_map.get(stock.code)
         if not corp_code:
-            report.skipped_targets += 1
-            message = f"{stock.code} {stock.name}: OpenDART corp_code 를 찾지 못했습니다."
-            report.warnings.append(message)
-            logger.warning(
-                "Risk event collection skipped because corp code is unresolved",
-                extra={
-                    "event": "risk_event_collect_skipped",
-                    "stock_code": stock.code,
-                    "source": RISK_EVENT_SOURCE,
-                },
-            )
-            if not dry_run:
+            try:
+                fallback_result = _collect_naver_risk_events_for_stock(stock, bgn_de, end_de, dry_run=dry_run)
+            except Exception as exc:
+                report.error_targets += 1
+                message = f"{stock.code} {stock.name}: 리스크 이벤트 보조 수집에 실패했습니다. ({exc})"
+                report.warnings.append(message)
+                if not dry_run:
+                    record_collection_status(
+                        stock=stock,
+                        data_type=StockDataCollectionStatus.TYPE_RISK_EVENT,
+                        status=StockDataCollectionStatus.STATUS_ERROR,
+                        source=RISK_EVENT_FALLBACK_SOURCE,
+                        row_count=0,
+                        message=str(exc),
+                    )
+                continue
+
+            report.created_rows += fallback_result["created"]
+            report.updated_rows += fallback_result["updated"]
+            if fallback_result["matched"] == 0:
+                report.empty_targets += 1
+                if not dry_run:
+                    record_collection_status(
+                        stock=stock,
+                        data_type=StockDataCollectionStatus.TYPE_RISK_EVENT,
+                        status=StockDataCollectionStatus.STATUS_EMPTY,
+                        source=RISK_EVENT_FALLBACK_SOURCE,
+                        row_count=0,
+                        message="매칭된 위험 공시가 없습니다.",
+                    )
+            elif not dry_run:
                 record_collection_status(
                     stock=stock,
                     data_type=StockDataCollectionStatus.TYPE_RISK_EVENT,
-                    status=StockDataCollectionStatus.STATUS_SKIPPED,
-                    source=RISK_EVENT_SOURCE,
-                    row_count=0,
-                    message="corp_code 미매핑",
+                    status=StockDataCollectionStatus.STATUS_SUCCESS,
+                    source=RISK_EVENT_FALLBACK_SOURCE,
+                    row_count=fallback_result["matched"],
+                    message="",
                 )
             continue
 

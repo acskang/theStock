@@ -1,0 +1,117 @@
+<section id="toss-dashboard-live-holdings" class="card" aria-label="Toss 실시간 보유종목">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+      <div>
+        <h3 class="h5 fw-bold mb-1">Toss 실시간 보유종목</h3>
+        <p class="text-muted mb-0">버튼을 눌렀을 때 Toss 보유종목을 read-only로 조회합니다.</p>
+      </div>
+      {% if toss_api_calls_enabled %}
+        <span class="badge text-bg-success">API enabled</span>
+      {% else %}
+        <span class="badge text-bg-secondary">API disabled</span>
+      {% endif %}
+    </div>
+
+    {% if live_holdings_error %}
+      <div class="alert alert-danger" role="alert">{{ live_holdings_error }}</div>
+    {% endif %}
+    {% if live_holdings_message %}
+      <div class="alert alert-success" role="alert">{{ live_holdings_message }}</div>
+    {% endif %}
+
+    {% if not toss_api_calls_enabled %}
+      <div class="alert alert-warning mb-0" role="alert">현재 Toss API 조회 기능이 비활성화되어 있습니다.</div>
+    {% elif safe_status.status != "active" %}
+      <div class="alert alert-warning mb-0" role="alert">Toss credential 연결 확인을 먼저 완료해 주세요.</div>
+    {% else %}
+      <form method="post" action="{{ dashboard_holdings_url }}"
+            hx-post="{{ dashboard_holdings_url }}"
+            hx-target="#toss-dashboard-live-holdings"
+            hx-swap="outerHTML">
+        {% csrf_token %}
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-8">
+            <label class="form-label" for="{{ holdings_form.symbol.id_for_label }}">{{ holdings_form.symbol.label }}</label>
+            {{ holdings_form.symbol }}
+            {% for error in holdings_form.symbol.errors %}
+              <div class="form-text text-danger">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-12 col-md-4">
+            <button type="submit" class="btn btn-dark w-100">실시간 보유종목 불러오기</button>
+          </div>
+        </div>
+      </form>
+    {% endif %}
+
+    {% if live_holdings_preview %}
+      <div class="row g-2 my-3">
+        <div class="col-6 col-md-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small text-muted">item count</div>
+            <div class="fw-bold">{{ live_holdings_preview.item_count }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small text-muted">total purchase</div>
+            <div class="fw-bold">{{ live_holdings_preview.summary.total_purchase_amount.krw|default:"-" }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small text-muted">market value</div>
+            <div class="fw-bold">{{ live_holdings_preview.summary.market_value_amount.krw|default:"-" }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small text-muted">profit/loss</div>
+            <div class="fw-bold">{{ live_holdings_preview.summary.profit_loss_amount.krw|default:"-" }}</div>
+          </div>
+        </div>
+      </div>
+
+      {% if live_holdings_preview.items %}
+        <div class="table-responsive mt-3">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">종목</th>
+                <th scope="col">이름</th>
+                <th scope="col">시장</th>
+                <th scope="col">통화</th>
+                <th scope="col">수량</th>
+                <th scope="col">현재가</th>
+                <th scope="col">평단</th>
+                <th scope="col">평가금액</th>
+                <th scope="col">손익</th>
+                <th scope="col">손익률</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in live_holdings_preview.items %}
+                <tr>
+                  <td class="fw-semibold">{{ item.symbol|default:"-" }}</td>
+                  <td>{{ item.name|default:"-" }}</td>
+                  <td>{{ item.market_country|default:"-" }}</td>
+                  <td>{{ item.currency|default:"-" }}</td>
+                  <td>{{ item.quantity|default:"-" }}</td>
+                  <td>{{ item.last_price|default:"-" }}</td>
+                  <td>{{ item.average_purchase_price|default:"-" }}</td>
+                  <td>{{ item.market_value_amount|default:"-" }}</td>
+                  <td>{{ item.profit_loss_amount|default:"-" }}</td>
+                  <td>{{ item.profit_loss_rate|default:"-" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-info mt-3 mb-0" role="alert">조회된 Toss 보유종목이 없습니다.</div>
+      {% endif %}
+    {% elif not live_holdings_error %}
+      <div class="alert alert-light border mt-3 mb-0" role="alert">실시간 보유종목 불러오기를 실행해 주세요.</div>
+    {% endif %}
+  </div>
+</section>

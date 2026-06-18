@@ -1,0 +1,25 @@
+{% if sync_error or sync_message or sync_result %}
+  <section id="toss-trade-sync-result" class="card mb-3">
+    <div class="card-body">
+      <h3 class="h5 fw-bold mb-3">동기화 결과</h3>
+      {% if sync_error %}<div class="alert alert-danger">{{ sync_error }}</div>{% endif %}
+      {% if sync_message %}<div class="alert alert-success">{{ sync_message }}</div>{% endif %}
+      {% if sync_result %}
+        <div class="row g-2 mb-3">
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">조회 페이지</div><div class="fw-bold">{{ sync_result.fetched_pages }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">조회 주문</div><div class="fw-bold">{{ sync_result.fetched_orders }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">체결 주문</div><div class="fw-bold">{{ sync_result.filled_orders }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">새 거래</div><div class="fw-bold">{{ sync_result.created_transactions }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">기존 거래 연결</div><div class="fw-bold">{{ sync_result.matched_existing_transactions }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">중복 skip</div><div class="fw-bold">{{ sync_result.duplicate_orders }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">미체결 skip</div><div class="fw-bold">{{ sync_result.no_fill_skipped }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Stock 누락</div><div class="fw-bold">{{ sync_result.missing_stock_skipped }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">검토 필요</div><div class="fw-bold">{{ sync_result.conflict_skipped }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">오류</div><div class="fw-bold">{{ sync_result.error_count }}</div></div></div>
+        </div>
+        <p class="small text-muted mb-1">High-water orderedAt: {{ sync_result.high_water_ordered_at|default:"-" }}</p>
+        <p class="small text-muted mb-0">High-water filledAt: {{ sync_result.high_water_filled_at|default:"-" }}</p>
+      {% endif %}
+    </div>
+  </section>
+{% endif %}

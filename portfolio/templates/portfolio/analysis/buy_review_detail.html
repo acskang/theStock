@@ -1,0 +1,140 @@
+{% extends "portfolio/analysis/base.html" %}
+
+{% block analysis_title %}매수 회고 상세{% endblock %}
+{% block analysis_heading %}매수 회고 상세{% endblock %}
+
+{% block analysis_content %}
+<section class="d-flex justify-content-between gap-3 flex-wrap mb-3">
+  <div>
+    <h2 class="h4 mb-1">{{ retrospective.stock_name }}</h2>
+    <div class="text-secondary small">
+      {% if stock_code %}{{ stock_code }} · {% endif %}
+      가격 데이터 {{ retrospective.price_count|default:"-" }}건 · 평가 완료 {{ retrospective.scored_count|default:"-" }}건 · 데이터 부족 {{ retrospective.pending_count|default:"-" }}건
+    </div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary" href="{% url 'buy_review_ranking' %}">랭킹으로</a>
+    <a class="btn btn-outline-secondary" href="?verdict={{ retrospective.selected_filter }}&export=retrospective_details_csv">CSV 다운로드</a>
+  </div>
+</section>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-md-5 col-lg-3">
+    <label class="form-label small" for="verdict">판정 필터</label>
+    <select id="verdict" name="verdict" class="form-select">
+      {% for value, label in retrospective_filter_options %}
+        <option value="{{ value }}"{% if retrospective.selected_filter == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3 col-lg-2"><button class="btn btn-primary w-100" type="submit">적용</button></div>
+</form>
+
+<section class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h5">회고 인사이트</h2>
+      <p class="mb-3">{{ retrospective.insights.headline }}</p>
+      <div class="row g-2">
+        <div class="col-6"><div class="border rounded p-2"><div class="small text-secondary">평균 20일 성과</div><div class="fw-bold">{{ retrospective.insights.average_return_20_display }}</div></div></div>
+        <div class="col-6"><div class="border rounded p-2"><div class="small text-secondary">평균 최대 낙폭</div><div class="fw-bold">{{ retrospective.insights.average_max_drawdown_20_display }}</div></div></div>
+        <div class="col-6"><div class="border rounded p-2"><div class="small text-secondary">주요 진입 맥락</div><div class="fw-bold">{{ retrospective.insights.dominant_entry_context }}</div></div></div>
+        <div class="col-6"><div class="border rounded p-2"><div class="small text-secondary">필터 결과</div><div class="fw-bold">{{ retrospective.filtered_count }}건</div></div></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h5">행동 인사이트</h2>
+      {% if retrospective.insights.best_case_summary %}<p class="mb-2">{{ retrospective.insights.best_case_summary }}</p>{% endif %}
+      {% if retrospective.insights.worst_case_summary %}<p class="mb-0">{{ retrospective.insights.worst_case_summary }}</p>{% endif %}
+      {% if not retrospective.insights.best_case_summary and not retrospective.insights.worst_case_summary %}
+        <p class="text-secondary mb-0">대표 사례를 만들 데이터가 부족합니다.</p>
+      {% endif %}
+    </div></div>
+  </div>
+</section>
+
+<section class="card mb-4">
+  <div class="card-body">
+    <h2 class="h5">가격 흐름과 매수 시점</h2>
+    {% if retrospective.overview_chart.available %}
+      <div class="d-flex justify-content-between gap-3 flex-wrap small text-secondary mb-2">
+        <div>{{ retrospective.overview_chart.start_date_display }} ~ {{ retrospective.overview_chart.end_date_display }}</div>
+        <div>저점 {{ retrospective.overview_chart.min_price_display }} / 고점 {{ retrospective.overview_chart.max_price_display }} / 최근 {{ retrospective.overview_chart.latest_close_display }}</div>
+      </div>
+      <div class="overflow-auto">
+        <svg viewBox="0 0 760 180" class="w-100" style="min-width: 720px; height: 220px;" aria-label="가격 흐름과 매수 시점">
+          <polyline fill="none" stroke="#1f3c88" stroke-width="2" points="{{ retrospective.overview_chart.polyline_points }}"></polyline>
+          {% for marker in retrospective.overview_chart.markers %}
+            <circle cx="{{ marker.x }}" cy="{{ marker.y }}" r="5" fill="{{ marker.color }}" stroke="#ffffff" stroke-width="1.5">
+              <title>{{ marker.traded_at }} / {{ marker.entry_context }} / {{ marker.unit_price_display }} / {{ marker.label }} / 20일 {{ marker.return_20_display }}</title>
+            </circle>
+          {% endfor %}
+        </svg>
+      </div>
+      <div class="small text-secondary mt-2">잘한/보통/아쉬운/보류 marker는 기존 회고 차트 로직을 그대로 사용합니다.</div>
+    {% else %}
+      <p class="text-secondary mb-0">가격 흐름을 그릴 DailyPrice 데이터가 부족합니다.</p>
+    {% endif %}
+  </div>
+</section>
+
+<details class="card mb-4">
+  <summary class="card-header fw-semibold">고급 실행 품질 지표</summary>
+  <div class="card-body">
+    <p>{{ retrospective.execution_quality.headline }}</p>
+    <div class="row g-2">
+      <div class="col-sm-6 col-xl-3"><div class="border rounded p-2"><div class="small text-secondary">평균 종합 점수</div><div class="fw-bold">{{ retrospective.execution_quality.average_timing_score_display }}</div></div></div>
+      <div class="col-sm-6 col-xl-3"><div class="border rounded p-2"><div class="small text-secondary">직전 5일 흐름</div><div class="fw-bold">{{ retrospective.execution_quality.average_pre_buy_decline_display }}</div></div></div>
+      <div class="col-sm-6 col-xl-3"><div class="border rounded p-2"><div class="small text-secondary">이전 평단 대비</div><div class="fw-bold">{{ retrospective.execution_quality.average_pre_avg_gap_display }}</div></div></div>
+      <div class="col-sm-6 col-xl-3"><div class="border rounded p-2"><div class="small text-secondary">저점까지 거리</div><div class="fw-bold">{{ retrospective.execution_quality.average_trough_gap_display }}</div></div></div>
+      <div class="col-sm-6 col-xl-3"><div class="border rounded p-2"><div class="small text-secondary">저점 도달일</div><div class="fw-bold">{{ retrospective.execution_quality.average_trough_display }}</div></div></div>
+      <div class="col-sm-6 col-xl-3"><div class="border rounded p-2"><div class="small text-secondary">손익분기 도달일</div><div class="fw-bold">{{ retrospective.execution_quality.average_break_even_display }}</div></div></div>
+      <div class="col-sm-6 col-xl-3"><div class="border rounded p-2"><div class="small text-secondary">최고점 도달일</div><div class="fw-bold">{{ retrospective.execution_quality.average_peak_display }}</div></div></div>
+    </div>
+  </div>
+</details>
+
+<details class="card">
+  <summary class="card-header fw-semibold">매수별 상세 로그</summary>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle">
+        <thead>
+          <tr>
+            <th>매수시각</th>
+            <th>매수 구분</th>
+            <th>수량</th>
+            <th>매수가</th>
+            <th>매수 전/후 평단</th>
+            <th>5/20/60일 성과</th>
+            <th>20일 최대상승/하락</th>
+            <th>판정</th>
+            <th>타이밍 점수</th>
+            <th>평가 요약</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in retrospective.filtered_evaluations %}
+            <tr>
+              <td>{{ row.traded_at }}</td>
+              <td>{{ row.entry_context }}</td>
+              <td>{{ row.quantity }}</td>
+              <td>{{ row.unit_price_display }}</td>
+              <td>{{ row.pre_avg_price_display }} / {{ row.post_avg_price_display }}</td>
+              <td>{{ row.return_5_display }} / {{ row.return_20_display }} / {{ row.return_60_display }}</td>
+              <td>{{ row.max_gain_20_display }} / {{ row.max_drawdown_20_display }}</td>
+              <td>{{ row.evaluation_label }}</td>
+              <td>{{ row.timing_score_display }}</td>
+              <td>{{ row.evaluation_reason_label }}{% if row.data_note %}<div class="small text-secondary">{{ row.data_note }}</div>{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="10" class="text-secondary">현재 필터에 해당하는 매수 로그가 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</details>
+{% endblock %}
