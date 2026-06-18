@@ -69,10 +69,6 @@ def _build_toss_order_history_provider():
     return get_provider("toss")
 
 
-def _build_toss_accounts_provider():
-    return get_provider("toss")
-
-
 def _date_to_api_string(value):
     if value is None:
         return None
@@ -107,14 +103,6 @@ def _sanitize_order_history_result(result):
     return safe_payload
 
 
-def _sanitize_toss_accounts_result(result):
-    safe_payload = _sanitize_order_history_payload(result)
-    if not isinstance(safe_payload, dict):
-        return safe_payload
-    safe_payload.pop("raw", None)
-    return safe_payload
-
-
 def _safe_order_history_error(error, message, http_status):
     return Response({"error": error, "message": message}, status=http_status)
 
@@ -135,20 +123,6 @@ def _map_order_history_exception(exc):
     if isinstance(exc, TossOpenApiError):
         return _order_history_error_context("order_history_request_failed", "Toss order history request failed.")
     return _order_history_error_context("order_history_request_failed", "Toss order history request failed.")
-
-
-def _map_toss_accounts_exception(exc):
-    if isinstance(exc, TossProviderDisabled):
-        return _order_history_error_context("provider_disabled", "Toss provider is disabled.")
-    if isinstance(exc, TossConfigurationError):
-        return _order_history_error_context("configuration_error", "Toss provider is not configured.")
-    if isinstance(exc, TossAuthError):
-        return _order_history_error_context("authentication_failed", "Toss authentication failed.")
-    if isinstance(exc, TossRateLimitError):
-        return _order_history_error_context("rate_limit_exceeded", "Toss rate limit was exceeded.")
-    if isinstance(exc, TossOpenApiError):
-        return _order_history_error_context("toss_accounts_request_failed", "Toss accounts request failed.")
-    return _order_history_error_context("toss_accounts_request_failed", "Toss accounts request failed.")
 
 
 class DataQualitySnapshotDetailAPIView(generics.RetrieveAPIView):
@@ -361,37 +335,6 @@ def toss_order_history_page(request):
     context["network_call"] = bool(safe_result.get("network_call")) if isinstance(safe_result, dict) else False
     context["dry_run"] = bool(safe_result.get("dry_run")) if isinstance(safe_result, dict) else True
     return render(request, "data_pipeline/toss_order_history.html", context)
-
-
-@login_required
-def toss_customer_info_page(request):
-    if not bool(getattr(request.user, "is_staff", False)):
-        raise PermissionDenied("Staff permission is required.")
-
-    run_requested = request.GET.get("run") == "1"
-    context = {
-        "run_requested": run_requested,
-        "result": None,
-        "error": None,
-        "network_call": False,
-        "dry_run": True,
-        "read_only": True,
-        "order_execution": False,
-    }
-
-    if not run_requested:
-        return render(request, "data_pipeline/toss_customer_info.html", context)
-
-    try:
-        provider = _build_toss_accounts_provider()
-        result = provider.get_accounts()
-    except Exception as exc:
-        context["error"] = _map_toss_accounts_exception(exc)
-        return render(request, "data_pipeline/toss_customer_info.html", context)
-
-    context["result"] = _sanitize_toss_accounts_result(result)
-    context["network_call"] = True
-    return render(request, "data_pipeline/toss_customer_info.html", context)
 
 
 @login_required

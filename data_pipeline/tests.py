@@ -5472,134 +5472,14 @@ class DataPipelineApiTests(TestCase):
         self.assertContains(response, "Toss order history request failed.")
         self.assertNotIn("raw api body", content)
 
-    def _staff_toss_customer_info_client(self):
-        staff_user = User.objects.create_user(username="toss_customer_info_staff", password="pw12345", is_staff=True)
+    def test_toss_customer_info_page_is_removed(self):
+        staff_user = User.objects.create_user(username="removed_toss_customer_info_staff", password="pw12345", is_staff=True)
         client = Client()
         client.login(username=staff_user.username, password="pw12345")
-        return client
 
-    def _fake_toss_accounts_provider(self):
-        class FakeProvider:
-            def __init__(self):
-                self.calls = 0
+        response = client.get("/operations/toss/customer-info/")
 
-            def get_accounts(self):
-                self.calls += 1
-                return {
-                    "provider": "toss",
-                    "endpoint": "/api/v1/accounts",
-                    "dry_run": True,
-                    "account_count": 1,
-                    "account_types": ["BROKERAGE"],
-                    "account_seq_usable_count": 1,
-                    "accounts": [
-                        {
-                            "account_type": "BROKERAGE",
-                            "masked": "1234********5678",
-                            "account_seq_shape": "integer_like",
-                            "account_seq_usable": True,
-                            "accountNo": "fake_account_no_for_test_only",
-                            "accountSeq": "123456789",
-                            "Authorization": "Bearer fake",
-                            "access_token": "fake_access_token_value_for_test_only",
-                        }
-                    ],
-                    "raw": {
-                        "accountNo": "fake_account_no_for_test_only",
-                        "accountSeq": "123456789",
-                        "raw_response": {"secret": "must-not-render"},
-                    },
-                }
-
-        return FakeProvider()
-
-    def test_toss_customer_info_page_requires_staff(self):
-        url = "/operations/toss/customer-info/"
-        non_staff_user = User.objects.create_user(username="toss_customer_info_non_staff", password="pw12345")
-        non_staff_client = Client()
-        non_staff_client.login(username=non_staff_user.username, password="pw12345")
-
-        with patch("data_pipeline.views._build_toss_accounts_provider") as mock_provider:
-            anonymous_response = Client().get(url)
-            non_staff_response = non_staff_client.get(url)
-
-        self.assertIn(anonymous_response.status_code, (status.HTTP_302_FOUND, status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
-        self.assertEqual(non_staff_response.status_code, status.HTTP_403_FORBIDDEN)
-        mock_provider.assert_not_called()
-
-    def test_toss_customer_info_page_default_get_does_not_call_provider(self):
-        before_log_count = DataIngestionLog.objects.count()
-        client = self._staff_toss_customer_info_client()
-
-        with patch("data_pipeline.views._build_toss_accounts_provider") as mock_provider:
-            response = client.get("/operations/toss/customer-info/")
-
-        content = response.content.decode("utf-8")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mock_provider.assert_not_called()
-        self.assertContains(response, "Toss 고객/계좌 정보 조회")
-        self.assertContains(response, "staff-only read-only 조회입니다.")
-        self.assertContains(response, "기본 진입 화면에서는 Toss API를 호출하지 않습니다.")
-        self.assertContains(response, 'name="run" value="1"', html=False)
-        self.assertNotIn("accountNo", content)
-        self.assertNotIn("accountSeq", content)
-        self.assertNotIn("Authorization", content)
-        self.assertNotIn("access_token", content)
-        self.assertEqual(DataIngestionLog.objects.count(), before_log_count)
-
-    def test_toss_customer_info_page_run_renders_sanitized_result(self):
-        before_holding_count = UserHolding.objects.count()
-        before_stock_count = Stock.objects.count()
-        before_daily_count = DailyPrice.objects.count()
-        before_provider_status_count = DataProviderStatus.objects.count()
-        before_log_count = DataIngestionLog.objects.count()
-
-        fake_provider = self._fake_toss_accounts_provider()
-        client = self._staff_toss_customer_info_client()
-        with patch("data_pipeline.views._build_toss_accounts_provider", return_value=fake_provider) as mock_builder:
-            response = client.get("/operations/toss/customer-info/", {"run": "1"})
-
-        content = response.content.decode("utf-8")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mock_builder.assert_called_once()
-        self.assertEqual(fake_provider.calls, 1)
-        self.assertContains(response, "조회 결과 요약")
-        self.assertContains(response, "/api/v1/accounts")
-        self.assertContains(response, "BROKERAGE")
-        self.assertContains(response, "1234********5678")
-        self.assertContains(response, "network_call")
-        self.assertNotIn("fake_account_no_for_test_only", content)
-        self.assertNotIn("accountNo", content)
-        self.assertNotIn("accountSeq", content)
-        self.assertNotIn("123456789", content)
-        self.assertNotIn("Authorization", content)
-        self.assertNotIn("fake_access_token_value_for_test_only", content)
-        self.assertNotIn("raw_response", content)
-        self.assertNotIn("must-not-render", content)
-        self.assertNotIn("주문하기", content)
-        self.assertNotIn("취소하기", content)
-        self.assertNotIn("정정하기", content)
-        self.assertNotIn("자동매매", content)
-        self.assertEqual(UserHolding.objects.count(), before_holding_count)
-        self.assertEqual(Stock.objects.count(), before_stock_count)
-        self.assertEqual(DailyPrice.objects.count(), before_daily_count)
-        self.assertEqual(DataProviderStatus.objects.count(), before_provider_status_count)
-        self.assertEqual(DataIngestionLog.objects.count(), before_log_count)
-
-    def test_toss_customer_info_page_provider_error_is_safe(self):
-        class FakeProvider:
-            def get_accounts(self):
-                raise TossOpenApiError("raw accounts api body")
-
-        client = self._staff_toss_customer_info_client()
-        with patch("data_pipeline.views._build_toss_accounts_provider", return_value=FakeProvider()):
-            response = client.get("/operations/toss/customer-info/", {"run": "1"})
-
-        content = response.content.decode("utf-8")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertContains(response, "toss_accounts_request_failed")
-        self.assertContains(response, "Toss accounts request failed.")
-        self.assertNotIn("raw accounts api body", content)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
 class OrderHistoryReconciliationAPITests(TestCase):

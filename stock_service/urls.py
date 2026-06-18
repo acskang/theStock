@@ -3,7 +3,6 @@ from django.urls import include, path
 from data_pipeline.views import (
     TossOrderHistoryAPIView,
     TossOrderHistoryReconciliationAPIView,
-    toss_customer_info_page,
     toss_order_history_page,
     toss_order_history_reconciliation_page,
 )
@@ -70,11 +69,6 @@ urlpatterns = [
         'operations/data-pipeline/providers/<str:provider>/<str:data_type>/',
         views.data_pipeline_provider_detail_page,
         name='data_pipeline_provider_detail_page',
-    ),
-    path(
-        "operations/toss/customer-info/",
-        toss_customer_info_page,
-        name="toss-customer-info-page",
     ),
     path(
         "operations/toss/order-history/",

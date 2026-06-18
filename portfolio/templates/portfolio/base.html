@@ -83,7 +83,6 @@
         {% if request.user.is_staff %}
           <div class="sidebar-section">
             <div class="sidebar-section__label">Operations</div>
-            <a class="sidebar-link" href="{% url 'toss-customer-info-page' %}">Toss 고객 정보</a>
             <a class="sidebar-link" href="{% url 'toss-order-history-page' %}">Toss 주문 내역</a>
             <a class="sidebar-link" href="{% url 'toss-order-history-reconciliation-page' %}">Toss 정합성 비교</a>
             <a class="sidebar-link" href="/admin/">Django Admin</a>
