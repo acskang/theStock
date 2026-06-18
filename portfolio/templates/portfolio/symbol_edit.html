@@ -1,11 +1,11 @@
 {% extends 'portfolio/base.html' %}
 {% block content %}
 <div class="card shadow-sm"><div class="card-body">
-  <h4 class="mb-3">티커 매핑 수정</h4>
+  <h4 class="mb-3">종목마스터 수정</h4>
   <form method="post" class="row g-3">
     {% csrf_token %}
     <div class="col-md-4"><label class="form-label">종목명</label>{{ form.stock_name }}</div>
-    <div class="col-md-4"><label class="form-label">티커</label>{{ form.ticker }}</div>
+    <div class="col-md-4"><label class="form-label">시세 조회 티커</label>{{ form.ticker }}</div>
     <div class="col-md-4"><label class="form-label">메모</label>{{ form.note }}</div>
     <div class="col-12 d-flex gap-2"><button class="btn btn-primary">저장</button><a class="btn btn-outline-secondary" href="/symbols/">목록</a></div>
   </form>

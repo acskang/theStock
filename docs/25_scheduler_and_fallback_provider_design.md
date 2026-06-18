@@ -80,6 +80,15 @@ get_provider("toss")
 
 Toss is not included in `AutoProvider`, and enabling `TOSS_INVEST_PROVIDER_ENABLED=true` does not change the default provider path.
 
+Stock master automation target:
+
+```text
+1. 국내 종목 master는 KRX 기반 자동 적재로 대체한다.
+2. 미국 종목 master는 별도 미국 시장 provider 또는 Toss 종목 기본정보 조회 결과를 검증해 자동 적재 후보로 둔다.
+3. 기존 `/symbols/` 수동 화면은 운영 메뉴의 `종목마스터 관리/등록`으로 유지하되, 장기적으로는 누락/충돌 보정용으로 축소한다.
+4. 자동 적재는 Stock 자동 생성 정책, market 분류, 기존 거래/보유 매핑 영향 검증 후 별도 단계에서 구현한다.
+```
+
 ## 2. Relevant Models
 
 ### DataIngestionLog

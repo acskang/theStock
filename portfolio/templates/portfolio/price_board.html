@@ -3,7 +3,7 @@
 <div class="card shadow-sm mb-4"><div class="card-body">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="mb-0">시세 보드</h4>
-    <a class="btn btn-outline-secondary btn-sm" href="/symbols/">티커 관리 화면</a>
+    <a class="btn btn-outline-secondary btn-sm" href="/symbols/">종목마스터 관리</a>
   </div>
   <p class="text-muted mb-0">시세 조회에 실패한 종목은 아래 표에서 바로 티커를 저장할 수 있습니다. 코스피는 <code>.KS</code>, 코스닥은 <code>.KQ</code> 를 붙여 입력하세요.</p>
 </div></div>
@@ -33,7 +33,7 @@
 </div></div>
 
 <div class="card shadow-sm"><div class="card-body">
-  <h5 class="mb-3">수동 티커 매핑</h5>
+  <h5 class="mb-3">수동 종목마스터 매핑</h5>
   {% if resolved_name %}
     <div class="alert alert-success py-2">{{ resolved_name }} 티커를 저장했고, 다음 새로고침부터 시세 조회에 반영됩니다.</div>
   {% endif %}

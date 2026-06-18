@@ -89,6 +89,8 @@ Toss API Key, Secret Key, Access Token, 계좌번호는 문서, Git, 테스트 f
 
 보유 종목 컨설팅 화면은 `UserHolding.max_additional_budget`를 기준으로 추가 예산을 계산한다. `/consulting/holdings/` 화면의 `추가예산설정` 버튼에서 전체 추가 예산을 입력하면 활성 보유 종목에 균등 배분하고, 개별 종목 금액을 바꾸면 총액과 배정 비중을 다시 계산해 저장한다.
 
+종목명/시세 조회 티커 수동 관리 화면은 운영 메뉴의 `종목마스터 관리/등록`으로 둔다. 일반 사용자 주요 흐름에서는 직접 노출하지 않는다. 장기적으로는 KRX 국내 종목 master와 미국 종목 master 자동 적재 기능으로 대체하고, 수동 화면은 누락/충돌 보정용 운영 도구로 축소한다.
+
 2026-06 기술 아키텍처 보강 기준에서는 일반 사용자 기능의 최종 방향을 사용자별 Toss credential 1:1 구조로 둔다. 전역 `.env` Toss credential은 staff-only 운영 점검 또는 전환 기간에만 제한적으로 유지할 수 있으며, 일반 사용자 데이터 조회에는 사용하지 않는다. `.env` 파일 자체는 삭제하지 않고 `DJANGO_SECRET_KEY`, DB 설정, `CREDENTIAL_ENCRYPTION_KEY`, `CREDENTIAL_HASH_PEPPER`, `SQLCIPHER_DATABASE_KEY` 같은 운영 secret 관리 수단으로 유지한다.
 
 SQLite 환경에서 SQLCipher는 DB 파일 유출 방어용 보조 계층으로 검토한다. Toss credential column 보안의 핵심은 SQLCipher가 아니라 application-level encrypted field이며, SQL query 결과에서도 `client_id`, `client_secret`, token 평문이 보이면 안 된다. 상세 기준은 `docs/54_technical_architecture_and_toss_credential_design.md`를 따른다.

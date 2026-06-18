@@ -56,7 +56,6 @@
           <a class="sidebar-link" href="{% url 'transaction_list' %}">거래 조회</a>
           <a class="sidebar-link" href="{% url 'upload_csv' %}">CSV 업로드</a>
           <a class="sidebar-link" href="{% url 'price_board' %}">시세 보드</a>
-          <a class="sidebar-link" href="{% url 'symbol_list' %}">티커 관리</a>
           {% url 'profit_loss_dashboard' as profit_loss_dashboard_url %}
           {% url 'holdings_valuation' as holdings_valuation_url %}
           {% url 'realized_profit' as realized_profit_url %}
@@ -68,7 +67,6 @@
           <div class="sidebar-section__label">More</div>
           <a class="sidebar-link" href="{% url 'portfolio_summary_page' %}">포트폴리오 요약</a>
           <a class="sidebar-link" href="{% url 'transaction_create' %}">거래 등록</a>
-          <a class="sidebar-link" href="{% url 'symbol_create' %}">티커 등록</a>
           <a class="sidebar-link" href="{% url 'api-docs' %}">API Docs</a>
           <a class="sidebar-link" href="{% url 'api-schema' %}">API Schema</a>
           <a class="sidebar-link" href="{% url 'manual_page' %}">Manual</a>
@@ -76,6 +74,8 @@
         {% if request.user.is_staff %}
           <div class="sidebar-section">
             <div class="sidebar-section__label">Operations</div>
+            <a class="sidebar-link" href="{% url 'symbol_list' %}">종목마스터 관리</a>
+            <a class="sidebar-link" href="{% url 'symbol_create' %}">종목마스터 등록</a>
             <a class="sidebar-link" href="{% url 'toss-order-history-page' %}">Toss 주문 내역</a>
             <a class="sidebar-link" href="{% url 'toss-order-history-reconciliation-page' %}">Toss 정합성 비교</a>
             <a class="sidebar-link" href="/admin/">Django Admin</a>
