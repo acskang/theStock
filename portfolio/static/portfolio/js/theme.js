@@ -31,7 +31,7 @@
   var sidebar = document.querySelector("[data-navigation-sidebar]");
   var content = document.querySelector("[data-navigation-content]");
   var openButton = document.querySelector("[data-nav-open-button]");
-  var closeButtons = document.querySelectorAll("[data-nav-close-button], [data-nav-backdrop]");
+  var closeButtons = document.querySelectorAll("[data-nav-backdrop]");
   var backdrop = document.querySelector("[data-nav-backdrop]");
   var desktopQuery = window.matchMedia("(min-width: 1024px)");
   var storageKey = "stock-workbench-sidebar-collapsed";
@@ -100,7 +100,24 @@
     setExpanded(sidebar.classList.contains("is-open"));
   }
 
-  openButton.addEventListener("click", showNavigation);
+  function toggleNavigation() {
+    if (desktopQuery.matches) {
+      if (sidebar.classList.contains("sidebar-collapsed")) {
+        showNavigation();
+      } else {
+        hideNavigation();
+      }
+      return;
+    }
+
+    if (sidebar.classList.contains("is-open")) {
+      hideNavigation();
+    } else {
+      showNavigation();
+    }
+  }
+
+  openButton.addEventListener("click", toggleNavigation);
   closeButtons.forEach(function (button) {
     button.addEventListener("click", hideNavigation);
   });

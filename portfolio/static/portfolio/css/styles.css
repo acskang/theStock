@@ -98,16 +98,6 @@ a {
   transition: transform .2s ease;
 }
 
-.app-sidebar__brand {
-  display: flex;
-  height: 4rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, .1);
-  padding: 0 1.5rem;
-}
-
 .app-sidebar__nav {
   display: grid;
   gap: .85rem;
@@ -129,32 +119,6 @@ a {
   line-height: 1;
   padding: .35rem .75rem .2rem;
   text-transform: uppercase;
-}
-
-.brand-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: #ffffff;
-  text-decoration: none;
-  font-weight: 700;
-}
-
-.brand-link:hover {
-  color: #ffffff;
-}
-
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--primary);
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 800;
 }
 
 .sidebar-link {
@@ -237,7 +201,6 @@ a {
 }
 
 .mobile-menu-button,
-.sidebar-hide-button,
 .theme-toggle,
 .app-header-button {
   border: 1px solid var(--app-border);
@@ -247,25 +210,12 @@ a {
 }
 
 .mobile-menu-button,
-.sidebar-hide-button,
 .theme-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
-}
-
-.sidebar-hide-button {
-  flex: 0 0 auto;
-  border-color: rgba(255, 255, 255, .1);
-  background: transparent;
-  color: #cbd5e1;
-}
-
-.sidebar-hide-button:hover {
-  background: rgba(255, 255, 255, .1);
-  color: #ffffff;
 }
 
 .app-header-button {
